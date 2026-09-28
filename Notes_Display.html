@@ -132,7 +132,7 @@
             
             <div id="search-modal-existing-section" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 5px;">
-                    <label style="font-size: 13px; font-weight: bold; color: #333;">Matching Entries (Click to Edit):</label>
+                    <label style="font-size: 13px; font-weight: bold; color: #333;">Matching Entries (Click to Select, Edit to modify):</label>
                     <button type="button" id="add-entry-btn" onclick="openAddModal()" style="font-size: 12px; padding: 6px 10px; background: #d2e3fc; border: 1px solid #999; opacity: 0.6;" disabled>➕ Add New Entry</button>
                 </div>
                 <div id="search-modal-existing-container" class="modal-existing-list" onscroll="handleGridScroll(event)">
@@ -164,6 +164,7 @@
     <script>
         let notesTree = [];
         let activeActionPathStr = null;
+        let selectedParentPathStr = null;
         let modalMode = 'add'; 
         let isFileLoaded = false;
 
@@ -262,6 +263,7 @@
                         notesTree.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
                         
                         isFileLoaded = true;
+                        selectedParentPathStr = null;
                         saveToStorage();
                         
                         document.getElementById('onload-search-input').removeAttribute('disabled');
@@ -329,14 +331,32 @@
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'modal-list-item';
                 itemDiv.style.marginLeft = `${item.indent}px`;
-                itemDiv.onclick = () => openEditModal(item.pathStr);
+                
+                const isSelected = (item.pathStr === selectedParentPathStr);
+                if (isSelected) {
+                    itemDiv.style.background = '#e8f0fe';
+                    itemDiv.style.borderColor = '#1a73e8';
+                }
+
+                itemDiv.onclick = (e) => {
+                    if (e.target.classList.contains('edit-btn-span') || e.target.closest('.edit-btn-span')) {
+                        openEditModal(item.pathStr);
+                    } else {
+                        if (selectedParentPathStr === item.pathStr) {
+                            selectedParentPathStr = null;
+                        } else {
+                            selectedParentPathStr = item.pathStr;
+                        }
+                        handleOnloadSearchInput();
+                    }
+                };
                 
                 let imgTagIndicator = (item.node.images && item.node.images.length > 0) ? ' 🖼️' : '';
                 itemDiv.innerHTML = `
                     <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:380px;" title="${item.node.text}">
                         ${item.node.text}${imgTagIndicator}
                     </span>
-                    <span style="font-size:11px; color:#1a73e8; font-weight:bold;">Edit ✏️</span>
+                    <span class="edit-btn-span" style="font-size:11px; color:#1a73e8; font-weight:bold; padding: 4px;">Edit ✏️</span>
                 `;
                 container.appendChild(itemDiv);
             }
@@ -422,9 +442,16 @@
             if (!isFileLoaded) return;
             modalMode = 'add';
             activeActionPathStr = null;
-            document.getElementById('modal-title').textContent = 'Add New News Item';
-            document.getElementById('modal-text').value = '';
             
+            if (selectedParentPathStr) {
+                const pathArr = selectedParentPathStr.split('-').map(Number);
+                const parentItem = getItemByPath(pathArr);
+                document.getElementById('modal-title').textContent = `Add Sub-level Item under "${parentItem ? parentItem.text : ''}"`;
+            } else {
+                document.getElementById('modal-title').textContent = 'Add New Root Item';
+            }
+
+            document.getElementById('modal-text').value = '';
             document.getElementById('images-container').innerHTML = '';
             addImageInputRow('', '');
 
@@ -497,7 +524,22 @@
             }
 
             if (modalMode === 'add') {
-                notesTree.push({ text: text, images: images, children: [] });
+                const newItem = { text: text, images: images, children: [] };
+                if (selectedParentPathStr) {
+                    const pathArr = selectedParentPathStr.split('-').map(Number);
+                    const parentItem = getItemByPath(pathArr);
+                    if (parentItem) {
+                        if (!Array.isArray(parentItem.children)) {
+                            parentItem.children = [];
+                        }
+                        parentItem.children.push(newItem);
+                        parentItem.children.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
+                    }
+                } else {
+                    notesTree.push(newItem);
+                    notesTree.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
+                }
+                selectedParentPathStr = null; // Clear selection after add
             } else if (modalMode === 'edit') {
                 const pathArr = activeActionPathStr.split('-').map(Number);
                 const item = getItemByPath(pathArr);
