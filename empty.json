@@ -1,0 +1,15 @@
+{
+"tree": [
+    {
+  "text": "Root Node",
+  "links": [],
+  "children": [
+    {
+      "text": "Child Node",
+      "links": [],
+      "children": []
+    }
+  ]
+}
+]
+}
