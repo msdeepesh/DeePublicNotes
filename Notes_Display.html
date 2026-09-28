@@ -133,7 +133,7 @@
             <div id="search-modal-existing-section" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 5px;">
                     <label style="font-size: 13px; font-weight: bold; color: #333;">Matching Entries (Click to Edit):</label>
-                    <button type="button" id="add-entry-btn" onclick="openAddModal()" style="font-size: 12px; padding: 6px 10px; background: #d2e3fc; border: 1px solid #999; opacity: 0.6;" disabled>➕[...]
+                    <button type="button" id="add-entry-btn" onclick="openAddModal()" style="font-size: 12px; padding: 6px 10px; background: #d2e3fc; border: 1px solid #999; opacity: 0.6;" disabled>➕ Add New Entry</button>
                 </div>
                 <div id="search-modal-existing-container" class="modal-existing-list" onscroll="handleGridScroll(event)">
                     <div style="color: #777; font-size: 12px; padding: 6px;">Please select a JSON file first.</div>
@@ -170,7 +170,6 @@
         let allFilteredItems = [];
         let displayedItemCount = 0;
         const CHUNK_SIZE = 35;
-        const IMAGE_URL_PREFIX = '/DeePublicNotes/Images/';
 
         window.onload = function() {
             const container = document.getElementById('search-modal-existing-container');
@@ -236,10 +235,6 @@
                                             if (!urlVal && rawImgName) {
                                                 urlVal = rawImgName;
                                             }
-                                            // Add image URL prefix
-                                            if (urlVal && !urlVal.startsWith('http') && !urlVal.startsWith('/DeePublicNotes')) {
-                                                urlVal = IMAGE_URL_PREFIX + urlVal;
-                                            }
                                             return {
                                                 image: rawImgName,
                                                 url: urlVal
@@ -253,7 +248,7 @@
                                         const parts = cleanName.split(/[/\\]/);
                                         cleanName = parts[parts.length - 1];
                                     }
-                                    imagesArr = [{ image: cleanName, url: IMAGE_URL_PREFIX + cleanName }];
+                                    imagesArr = [{ image: cleanName, url: cleanName }];
                                 }
 
                                 return {
@@ -390,7 +385,7 @@
             
             let initialDisplayUrl = urlVal;
             if (!initialDisplayUrl && cleanImageVal) {
-                initialDisplayUrl = IMAGE_URL_PREFIX + cleanImageVal;
+                initialDisplayUrl = `/DeePublicNotes/Images/${cleanImageVal}`;
             }
 
             rowDiv.innerHTML = `
@@ -415,7 +410,7 @@
                     const rawName = e.target.files[0].name;
                     nameDisplay.textContent = `Selected: ${rawName}`;
                     rowDiv.dataset.existingImage = rawName;
-                    urlInput.value = IMAGE_URL_PREFIX + rawName;
+                    urlInput.value = `/DeePublicNotes/Images/${rawName}`;
                 }
             });
 
@@ -490,11 +485,7 @@
 
                 let urlVal = urlInput.value.trim();
                 if (!urlVal && imageName) {
-                    urlVal = IMAGE_URL_PREFIX + imageName;
-                }
-                // Ensure URL has the prefix if it doesn't already
-                if (urlVal && !urlVal.startsWith('http') && !urlVal.startsWith(IMAGE_URL_PREFIX)) {
-                    urlVal = IMAGE_URL_PREFIX + urlVal;
+                    urlVal = `/DeePublicNotes/Images/${imageName}`;
                 }
 
                 if (imageName !== '' || urlVal !== '') {
