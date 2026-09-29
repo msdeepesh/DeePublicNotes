@@ -48,16 +48,6 @@
         .btn-download:hover {
             background-color: #218838;
         }
-        .editor-container {
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-            max-height: 500px;
-        }
-        .editor-container.collapsed {
-            max-height: 0;
-            padding: 0;
-            border: none;
-        }
         textarea {
             width: 100%;
             min-height: 250px;
@@ -72,107 +62,249 @@
             resize: none;
             overflow-y: hidden;
         }
+        .error-message {
+            color: #dc3545;
+            font-size: 13px;
+            margin-top: 6px;
+            font-weight: bold;
+            min-height: 18px;
+        }
+        /* Modal Popup Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 6px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .modal-header h3 {
+            margin: 0;
+            font-size: 16px;
+        }
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: #666;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .close-modal:hover {
+            color: #000;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+        }
+        pre {
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 12px;
+            overflow: auto;
+            margin: 0;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            max-height: 60vh;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 <body>
 
     <div class="header-row">
-        <h2>Indented Tree Text to JSON Converter</h2>
+        <h2>Hyphen Tree Text to JSON Converter</h2>
         <div class="right-tools">
-            <button id="collapseBtn" title="Collapse Textarea" onclick="toggleTextarea()">▲</button>
+            <button id="previewBtn" title="Preview JSON" onclick="toggleModal()">👁️</button>
             <button class="btn-download" title="Create & Download JSON" onclick="generateAndDownloadJSON()">💾</button>
         </div>
     </div>
     
-    <div id="editorContainer" class="editor-container">
-        <!-- Textarea is completely blank initially -->
-        <textarea id="inputText" placeholder="- Type your root item here... (e.g., Node Text {https://example.com})"></textarea>
+    <div>
+        <textarea id="inputText" placeholder="- Root item here... (e.g., Node Text {https://example.com})"></textarea>
+        <div id="errorBanner" class="error-message"></div>
+    </div>
+
+    <!-- JSON Preview Modal Popup -->
+    <div id="jsonModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>JSON Preview</h3>
+                <button class="close-modal" onclick="toggleModal()">&times;</button>
+            </div>
+            <pre><code id="jsonPreview"></code></pre>
+        </div>
     </div>
 
     <script>
         const textarea = document.getElementById('inputText');
-        const editorContainer = document.getElementById('editorContainer');
-        const collapseBtn = document.getElementById('collapseBtn');
+        const errorBanner = document.getElementById('errorBanner');
+        const jsonPreview = document.getElementById('jsonPreview');
+        const modal = document.getElementById('jsonModal');
 
-        // Toggle textarea collapse/expand state
-        function toggleTextarea() {
-            editorContainer.classList.toggle('collapsed');
-            const isCollapsed = editorContainer.classList.contains('collapsed');
-            collapseBtn.textContent = isCollapsed ? '▼' : '▲';
-            collapseBtn.title = isCollapsed ? 'Expand Textarea' : 'Collapse Textarea';
-        }
-
-        // Dynamic height adjustment
+        // Dynamic height adjustment without scrollbars
         function autoResize() {
-            if (!editorContainer.classList.contains('collapsed')) {
-                textarea.style.height = 'auto';
-                textarea.style.height = textarea.scrollHeight + 'px';
-            }
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
         }
 
-        textarea.addEventListener('input', autoResize);
+        textarea.addEventListener('input', () => {
+            autoResize();
+            parseTreeToJSON(); // triggers dynamic error checking on input
+        });
         window.addEventListener('load', autoResize);
 
-        // Handle Tab for indentation and Enter for tree continuation with matching hyphens
-        textarea.addEventListener('keydown', function(e) {
-            if (e.key === 'Tab') {
-                e.preventDefault();
-                const start = textarea.selectionStart;
-                const end = textarea.selectionEnd;
-                const value = textarea.value;
+        // Toggle Modal Popup state
+        function toggleModal() {
+            if (modal.classList.contains('active')) {
+                modal.classList.remove('active');
+            } else {
+                updatePreview();
+                modal.classList.add('active');
+            }
+        }
 
-                const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-                const lineEnd = value.indexOf('\n', end);
-                const actualEnd = lineEnd === -1 ? value.length : lineEnd;
-
-                const selectedLinesText = value.substring(lineStart, actualEnd);
-                const lines = selectedLinesText.split('\n');
-
-                const modifiedLines = lines.map(line => {
-                    const cleanMatch = line.match(/^(\t*)(?:-+\s*)?(.*?)(?:\s*\{[^}]*\})?$/);
-                    let tabs = cleanMatch ? cleanMatch[1].length : 0;
-                    
-                    // Extract full text content including any link block
-                    const fullMatch = line.match(/^(\t*)(?:-+\s*)?(.*)$/);
-                    const content = fullMatch ? fullMatch[2] : line.trim();
-
-                    if (!e.shiftKey) {
-                        tabs += 1; // Increase indent
-                    } else {
-                        tabs = Math.max(0, tabs - 1); // Decrease indent
-                    }
-
-                    const hyphens = '-'.repeat(tabs + 1);
-                    const tabStr = '\t'.repeat(tabs);
-                    return `${tabStr}${hyphens} ${content}`;
-                });
-
-                const replacement = modifiedLines.join('\n');
-                textarea.value = value.substring(0, lineStart) + replacement + value.substring(actualEnd);
-                
-                textarea.focus();
-                textarea.setSelectionRange(start, start + (replacement.length - selectedLinesText.length));
-                autoResize();
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                const start = textarea.selectionStart;
-                const value = textarea.value;
-                
-                const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-                const currentLine = value.substring(lineStart, start);
-                const match = currentLine.match(/^(\t*)(?:-+\s*)?/);
-                const tabs = match ? match[1].length : 0;
-
-                const hyphens = '-'.repeat(tabs + 1);
-                const tabStr = '\t'.repeat(tabs);
-                const insertion = `\n${tabStr}${hyphens} `;
-
-                textarea.value = value.substring(0, start) + insertion + value.substring(textarea.selectionEnd);
-                const newPos = start + insertion.length;
-                textarea.setSelectionRange(newPos, newPos);
-                autoResize();
+        // Close modal when clicking outside the content window
+        window.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.remove('active');
             }
         });
+
+        // Core parser logic with strict validation checking for starting hyphen (-) and valid level progression
+        function parseTreeToJSON() {
+            const text = textarea.value;
+            const lines = text.split('\n');
+            errorBanner.textContent = ''; // Reset error message
+
+            const root = { tree: [] };
+            const stack = [{ level: 0, children: root.tree }];
+            
+            let linkCounter = 1;
+            let hasError = false;
+            let previousLevel = 0;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (!line.trim()) continue;
+
+                // Validate that non-empty line starts with a hyphen (-)
+                const trimmed = line.trim();
+                if (!trimmed.startsWith('-')) {
+                    errorBanner.textContent = `Error on line ${i + 1}: Line must start with '-'`;
+                    hasError = true;
+                    break;
+                }
+
+                // Match hyphens count for level, node text, and optional {link} block
+                const match = line.match(/^(-+)\s*(.*?)(?:\s*\{([^}]*)\})?$/);
+                if (!match) {
+                    errorBanner.textContent = `Error on line ${i + 1}: Invalid format`;
+                    hasError = true;
+                    break;
+                }
+
+                const hyphens = match[1];
+                const level = hyphens.length; // 1 hyphen = level 1, 2 hyphens = level 2, etc.
+
+                // Validate level jump continuity (cannot skip levels when going deeper)
+                if (previousLevel === 0 && level > 1) {
+                    errorBanner.textContent = `Error on line ${i + 1}: Root node must start with a single '-'`;
+                    hasError = true;
+                    break;
+                } else if (previousLevel > 0 && level > previousLevel + 1) {
+                    errorBanner.textContent = `Error on line ${i + 1}: Invalid level jump from level ${previousLevel} to level ${level} (cannot skip levels)`;
+                    hasError = true;
+                    break;
+                }
+                previousLevel = level;
+
+                const nodeText = match[2] ? match[2].trim() : '';
+                const linksStr = match[3] ? match[3].trim() : '';
+                
+                const links = [];
+                if (linksStr) {
+                    linksStr.split(',').forEach(l => {
+                        const trimmedL = l.trim();
+                        const parts = trimmedL.split('|');
+                        
+                        if (parts.length === 2) {
+                            links.push({
+                                title: parts[0].trim(),
+                                url: parts[1].trim()
+                            });
+                        } else {
+                            const autoTitle = `lnk_${String(linkCounter).padStart(2, '0')}`;
+                            linkCounter++;
+                            links.push({
+                                title: autoTitle,
+                                url: trimmedL
+                            });
+                        }
+                    });
+                }
+
+                if (!nodeText) continue;
+
+                const node = {
+                    text: nodeText,
+                    links: links,
+                    children: []
+                };
+
+                while (stack.length > 1 && stack[stack.length - 1].level >= level) {
+                    stack.pop();
+                }
+
+                stack[stack.length - 1].children.push(node);
+                stack.push({ level: level, children: node.children });
+            }
+
+            if (hasError) {
+                return null;
+            }
+
+            return root;
+        }
+
+        // Update JSON preview content string
+        function updatePreview() {
+            const jsonObj = parseTreeToJSON();
+            if (!jsonObj) {
+                jsonPreview.textContent = `// Please fix validation errors before previewing JSON.`;
+            } else {
+                jsonPreview.textContent = JSON.stringify(jsonObj, null, 2);
+            }
+        }
 
         // Helper functions for filename generation
         function getFormattedDate() {
@@ -189,66 +321,15 @@
             return String(seq).padStart(2, '0');
         }
 
-        // Convert textarea tree structure to JSON and parse links from {} blocks with auto-incrementing lnk_<running number> titles
+        // Generate and download JSON file
         function generateAndDownloadJSON() {
-            const text = textarea.value;
-            const lines = text.split('\n');
-            const root = { tree: [] };
-            const stack = [{ level: -1, children: root.tree }];
-            
-            let linkCounter = 1; // Running number counter for automatic link titles
+            const jsonObj = parseTreeToJSON();
+            if (!jsonObj) {
+                alert('Please fix formatting errors before downloading.');
+                return;
+            }
 
-            lines.forEach(line => {
-                if (!line.trim()) return;
-
-                // Match indentation tabs, hyphens, node text, and optional {link} block
-                const match = line.match(/^(\t*)(?:-+\s*)?(.*?)(?:\s*\{([^}]*)\})?$/);
-                const tabs = match ? match[1].length : 0;
-                const level = tabs;
-                const nodeText = match && match[2] ? match[2].trim() : line.trim();
-                const linksStr = match && match[3] ? match[3].trim() : '';
-                
-                const links = [];
-                if (linksStr) {
-                    linksStr.split(',').forEach(l => {
-                        const trimmedL = l.trim();
-                        const parts = trimmedL.split('|');
-                        
-                        if (parts.length === 2) {
-                            // Explicit title provided (e.g., {lstcnt | https://...})
-                            links.push({
-                                title: parts[0].trim(),
-                                url: parts[1].trim()
-                            });
-                        } else {
-                            // Only URL provided; auto-generate title as lnk_<running number>
-                            const autoTitle = `lnk_${String(linkCounter).padStart(2, '0')}`;
-                            linkCounter++;
-                            links.push({
-                                title: autoTitle,
-                                url: trimmedL
-                            });
-                        }
-                    });
-                }
-
-                if (!nodeText) return;
-
-                const node = {
-                    text: nodeText,
-                    links: links,
-                    children: []
-                };
-
-                while (stack.length > 1 && stack[stack.length - 1].level >= level) {
-                    stack.pop();
-                }
-
-                stack[stack.length - 1].children.push(node);
-                stack.push({ level: level, children: node.children });
-            });
-
-            const jsonString = JSON.stringify(root, null, 2);
+            const jsonString = JSON.stringify(jsonObj, null, 2);
             
             const dateStr = getFormattedDate();
             const seqStr = getNextSeqNumber();
