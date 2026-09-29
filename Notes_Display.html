@@ -46,34 +46,39 @@
         }
         .modal input[type="text"] {
             width: 100%;
-            padding: 12px;
-            margin-top: 5px;
-            margin-bottom: 12px;
-            font-size: 16px;
+            padding: 10px;
+            margin-top: 4px;
+            margin-bottom: 8px;
+            font-size: 15px;
             box-sizing: border-box;
         }
         .modal-buttons {
             display: flex;
             justify-content: flex-start;
             gap: 5px;
-            margin-top: 10px;
+            margin-top: 4px;
+            margin-bottom: 8px;
             flex-wrap: wrap;
         }
+        /* Dropdown style for matching entries */
         .modal-existing-list {
-            background: #fafafa;
-            border: 1px solid #ddd;
-            padding: 10px;
-            flex: 1;
-            min-height: 250px;
+            background: #fff;
+            border: 1px solid #bbb;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            padding: 5px;
+            max-height: 200px;
             overflow-y: auto;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
+            position: absolute;
+            z-index: 1100;
+            display: none; /* Hidden by default */
         }
         .modal-list-item {
-            font-size: 14px;
+            font-size: 13px;
             padding: 8px 10px;
-            margin: 4px 0;
+            margin: 2px 0;
             background: #fff;
-            border: 1px solid #e5e5e5;
+            border: 1px solid #eee;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -85,7 +90,7 @@
         .image-row-input {
             display: flex;
             gap: 6px;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             align-items: center;
             background: #f9f9f9;
             padding: 6px;
@@ -115,48 +120,49 @@
         <div class="modal">
             <h3 style="margin-top:0; font-size:18px;">News Manager & Search</h3>
             
-            <div style="margin-bottom: 12px; background: #eef2f5; padding: 10px; border: 1px solid #ccc;">
+            <div style="margin-bottom: 10px; background: #eef2f5; padding: 10px; border: 1px solid #ccc;">
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
                     <label style="font-size: 13px; font-weight: bold;">Select JSON Backup:</label>
                     <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-                        <button type="button" onclick="openTreeViewWindow()" style="font-size: 12px; padding: 6px 10px; background: #e0e0e0; border: 1px solid #999;">📄 View Tree</button>
                         <button type="button" onclick="downloadUpdatedJson()" style="font-size: 12px; padding: 6px 10px; background: #d4edda; border: 1px solid #c3e6cb;">💾 Download JSON</button>
+                        <button type="button" onclick="openTreeViewWindow()" style="font-size: 12px; padding: 6px 10px; background: #e0e0e0; border: 1px solid #999;">📄 View Tree</button>
                     </div>
                 </div>
                 <input type="file" id="importFile" accept=".json" onchange="importBackup(event)" style="font-size: 12px; width: 100%;">
-                <div id="file-name-display" style="font-size: 12px; color: #555; font-style: italic; margin-top: 6px;">No file chosen</div>
+                <div id="file-name-display" style="font-size: 12px; color: #555; font-style: italic; margin-top: 4px;">No file chosen</div>
             </div>
 
-            <label style="font-size: 13px; font-weight: bold;">Type keyword to search entries:</label>
-            <input type="text" id="onload-search-input" placeholder="Type keywords..." oninput="handleOnloadSearchInput()" disabled>
-            
-            <div id="search-modal-existing-section" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 5px;">
-                    <label style="font-size: 13px; font-weight: bold; color: #333;">Matching Entries (Click to Select, Edit to modify):</label>
-                    <button type="button" id="add-entry-btn" onclick="openAddModal()" style="font-size: 12px; padding: 6px 10px; background: #d2e3fc; border: 1px solid #999; opacity: 0.6;" disabled>➕ Add New Entry</button>
+            <!-- Direct Entry Form Section on First Page -->
+            <div id="entry-form-section" style="background: #fdfdfd; border: 1px solid #ccc; padding: 10px; border-radius: 4px; opacity: 0.6; pointer-events: none; margin-bottom: 10px; position: relative;">
+                <h3 id="form-section-title" style="margin-top:0; font-size:15px; color:#1a73e8; margin-bottom: 8px;">Add New Root Item</h3>
+                
+                <div class="modal-buttons">
+                    <button type="button" id="submit-form-btn" onclick="submitModalForm()" style="background: #d2e3fc; font-weight:bold;" disabled>Save Entry</button>
+                    <button type="button" id="cancel-edit-btn" onclick="resetFormState()" class="form-ctrl-btn" style="display:none;" disabled>Cancel Edit</button>
                 </div>
-                <div id="search-modal-existing-container" class="modal-existing-list" onscroll="handleGridScroll(event)">
-                    <div style="color: #777; font-size: 12px; padding: 6px;">Please select a JSON file first.</div>
+
+                <label style="font-size: 12px; font-weight:bold;">Text description (type keyword to search/filter):</label>
+                <div style="position: relative;">
+                    <input type="text" id="modal-text" placeholder="Type keywords to search or enter news text..." oninput="handleOnloadSearchInput()" onfocus="handleOnloadSearchInput()" disabled>
+                    <!-- Matching Entries Dropdown Container -->
+                    <div id="search-modal-existing-container" class="modal-existing-list" onscroll="handleGridScroll(event)"></div>
                 </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Sub-Modal Form for Add / Edit -->
-    <div id="form-modal" class="modal-overlay" style="display: none; z-index: 1100;">
-        <div class="modal" style="height: auto; max-height: 90vh;">
-            <h3 id="modal-title" style="margin-top:0; font-size:18px;">Add/Edit News Item</h3>
-            
-            <label style="font-size: 13px;">Text description:</label>
-            <input type="text" id="modal-text" placeholder="Enter news text...">
+                <!-- Selected Item Bar with Edit & Delete Links -->
+                <div id="selected-item-bar" style="display: none; background: #e8f0fe; border: 1px solid #1a73e8; padding: 6px 10px; margin-bottom: 8px; border-radius: 4px; font-size: 12px; justify-content: space-between; align-items: center;">
+                    <span id="selected-item-text" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; font-weight: bold;"></span>
+                    <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                        <span onclick="openEditForm(selectedParentPathStr)" style="color: #1a73e8; cursor: pointer; font-weight: bold;">Edit ✏️</span>
+                        <span onclick="deleteItem(selectedParentPathStr)" style="color: #d93025; cursor: pointer; font-weight: bold;">Delete 🗑️</span>
+                        <span onclick="clearSelectionAndReset()" style="color: #555; cursor: pointer; font-weight: bold;" title="Deselect">✕</span>
+                    </div>
+                </div>
 
-            <label style="font-size: 13px; display: block; margin-top: 10px;">Images:</label>
-            <div id="images-container" style="margin-bottom: 8px; max-height: 35vh; overflow-y: auto;"></div>
-            <button type="button" onclick="addImageInputRow('', '')" style="font-size: 12px; margin-bottom: 12px;">+ Add Image</button>
-
-            <div class="modal-buttons">
-                <button onclick="closeFormModal()">Cancel</button>
-                <button onclick="submitModalForm()" style="background: #d2e3fc;">Save Changes</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                    <label style="font-size: 12px; font-weight:bold;">Images:</label>
+                    <button type="button" onclick="addImageInputRow('', '')" class="form-ctrl-btn" style="font-size: 11px; padding: 3px 8px;" disabled>+ Add Image</button>
+                </div>
+                <div id="images-container" style="margin-top: 4px; max-height: 120px; overflow-y: auto;"></div>
             </div>
         </div>
     </div>
@@ -165,7 +171,7 @@
         let notesTree = [];
         let activeActionPathStr = null;
         let selectedParentPathStr = null;
-        let modalMode = 'add'; 
+        let formMode = 'add'; 
         let isFileLoaded = false;
 
         let allFilteredItems = [];
@@ -173,9 +179,42 @@
         const CHUNK_SIZE = 35;
 
         window.onload = function() {
-            const container = document.getElementById('search-modal-existing-container');
-            container.innerHTML = '<div style="color: #777; font-size: 12px; padding: 6px;">Please select a JSON file first.</div>';
+            // Global click listener to close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!isFileLoaded) return;
+                const textInput = document.getElementById('modal-text');
+                const container = document.getElementById('search-modal-existing-container');
+                const modalContent = document.querySelector('.modal');
+                const selectedBar = document.getElementById('selected-item-bar');
+
+                if (modalContent && !modalContent.contains(e.target)) {
+                    // Clicking entirely outside the modal can be ignored or handled if needed
+                } else if (!textInput.contains(e.target) && !container.contains(e.target) && (!selectedBar.contains(e.target))) {
+                    container.style.display = 'none';
+                }
+            });
         };
+
+        function positionDropdown() {
+            const textInput = document.getElementById('modal-text');
+            const container = document.getElementById('search-modal-existing-container');
+            if (textInput && container) {
+                container.style.width = textInput.offsetWidth + 'px';
+                container.style.top = (textInput.offsetTop + textInput.offsetHeight) + 'px';
+                container.style.left = textInput.offsetLeft + 'px';
+            }
+        }
+
+        function clearSelectionAndReset() {
+            selectedParentPathStr = null;
+            document.getElementById('selected-item-bar').style.display = 'none';
+            if (formMode === 'edit') {
+                resetFormState();
+            } else {
+                updateFormHeader();
+            }
+            document.getElementById('search-modal-existing-container').style.display = 'none';
+        }
 
         function saveToStorage() {
             if (!isFileLoaded) return;
@@ -208,352 +247,7 @@
             downloadAnchor.remove();
         }
 
-        function importBackup(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const originalName = file.name;
-            document.getElementById('file-name-display').textContent = `Chosen file: ${originalName}`;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    let rawTree = Array.isArray(imported) ? imported : imported.tree;
-                    if (Array.isArray(rawTree)) {
-                        function sanitize(nodes) {
-                            return nodes.filter(n => n && typeof n === 'object').map(n => {
-                                let imagesArr = [];
-                                if (Array.isArray(n.images)) {
-                                    imagesArr = n.images.map(img => {
-                                        if (img && typeof img === 'object') {
-                                            let rawImgName = img.image || '';
-                                            if (rawImgName.includes('/') || rawImgName.includes('\\')) {
-                                                const parts = rawImgName.split(/[/\\]/);
-                                                rawImgName = parts[parts.length - 1];
-                                            }
-                                            let urlVal = img.url || '';
-                                            if (!urlVal && rawImgName) {
-                                                urlVal = rawImgName;
-                                            }
-                                            return {
-                                                image: rawImgName,
-                                                url: urlVal
-                                            };
-                                        }
-                                        return null;
-                                    }).filter(img => img && (img.image || img.url));
-                                } else if (typeof n.image === 'string' && n.image.trim() !== '') {
-                                    let cleanName = n.image.trim();
-                                    if (cleanName.includes('/') || cleanName.includes('\\')) {
-                                        const parts = cleanName.split(/[/\\]/);
-                                        cleanName = parts[parts.length - 1];
-                                    }
-                                    imagesArr = [{ image: cleanName, url: cleanName }];
-                                }
-
-                                return {
-                                    text: typeof n.text === 'string' ? n.text : '',
-                                    images: imagesArr,
-                                    children: Array.isArray(n.children) ? sanitize(n.children) : []
-                                };
-                            });
-                        }
-                        notesTree = sanitize(rawTree);
-                        notesTree.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
-                        
-                        isFileLoaded = true;
-                        selectedParentPathStr = null;
-                        saveToStorage();
-                        
-                        document.getElementById('onload-search-input').removeAttribute('disabled');
-                        const addBtn = document.getElementById('add-entry-btn');
-                        addBtn.removeAttribute('disabled');
-                        addBtn.style.opacity = '1';
-
-                        handleOnloadSearchInput();
-                    } else {
-                        alert('Invalid JSON file format.');
-                    }
-                } catch (err) {
-                    alert('Error reading JSON file.');
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        function handleOnloadSearchInput() {
-            const container = document.getElementById('search-modal-existing-container');
-            container.innerHTML = '';
-
-            if (!isFileLoaded) {
-                container.innerHTML = '<div style="color: #777; font-size: 12px; padding: 6px;">Please select a JSON file first.</div>';
-                return;
-            }
-
-            const query = document.getElementById('onload-search-input').value.trim().toLowerCase();
-            allFilteredItems = [];
-
-            function traverseAndCollect(nodes, path = []) {
-                nodes.forEach((node, idx) => {
-                    if (!node) return;
-                    const currentPath = [...path, idx];
-                    const pathStr = currentPath.join('-');
-                    
-                    const matches = query === '' || node.text.toLowerCase().includes(query);
-                    if (matches) {
-                        allFilteredItems.push({ node, pathStr, indent: Math.min(path.length * 12, 48) });
-                    }
-
-                    if (Array.isArray(node.children) && node.children.length > 0) {
-                        traverseAndCollect(node.children, currentPath);
-                    }
-                });
-            }
-
-            traverseAndCollect(notesTree);
-
-            displayedItemCount = 0;
-            container.innerHTML = '';
-            appendNextChunk();
-        }
-
-        function appendNextChunk() {
-            const container = document.getElementById('search-modal-existing-container');
-            if (allFilteredItems.length === 0) {
-                container.innerHTML = '<div style="color: #777; font-size: 12px; padding: 6px;">No matching entries found.</div>';
-                return;
-            }
-
-            const nextEnd = Math.min(displayedItemCount + CHUNK_SIZE, allFilteredItems.length);
-            for (let i = displayedItemCount; i < nextEnd; i++) {
-                const item = allFilteredItems[i];
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'modal-list-item';
-                itemDiv.style.marginLeft = `${item.indent}px`;
-                
-                const isSelected = (item.pathStr === selectedParentPathStr);
-                if (isSelected) {
-                    itemDiv.style.background = '#e8f0fe';
-                    itemDiv.style.borderColor = '#1a73e8';
-                }
-
-                itemDiv.onclick = (e) => {
-                    if (e.target.classList.contains('edit-btn-span') || e.target.closest('.edit-btn-span')) {
-                        openEditModal(item.pathStr);
-                    } else {
-                        if (selectedParentPathStr === item.pathStr) {
-                            selectedParentPathStr = null;
-                        } else {
-                            selectedParentPathStr = item.pathStr;
-                        }
-                        handleOnloadSearchInput();
-                    }
-                };
-                
-                let imgTagIndicator = (item.node.images && item.node.images.length > 0) ? ' 🖼️' : '';
-                itemDiv.innerHTML = `
-                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:380px;" title="${item.node.text}">
-                        ${item.node.text}${imgTagIndicator}
-                    </span>
-                    <span class="edit-btn-span" style="font-size:11px; color:#1a73e8; font-weight:bold; padding: 4px;">Edit ✏️</span>
-                `;
-                container.appendChild(itemDiv);
-            }
-            displayedItemCount = nextEnd;
-        }
-
-        function handleGridScroll(e) {
-            const el = e.target;
-            if (el.scrollHeight - el.scrollTop - el.clientHeight < 20) {
-                if (displayedItemCount < allFilteredItems.length) {
-                    appendNextChunk();
-                }
-            }
-        }
-
-        function getItemByPath(pathArr) {
-            let current = notesTree;
-            for (let i = 0; i < pathArr.length - 1; i++) {
-                current = current[pathArr[i]].children;
-            }
-            return current[pathArr[pathArr.length - 1]];
-        }
-
-        function updateImageRowLabels() {
-            const rows = document.querySelectorAll('.image-row-input');
-            rows.forEach((row, index) => {
-                const label = row.querySelector('.imglnk-label');
-                if (label) {
-                    label.textContent = `imglnk${index + 1}:`;
-                }
-            });
-        }
-
-        function addImageInputRow(imageVal = '', urlVal = '') {
-            const container = document.getElementById('images-container');
-            const rowDiv = document.createElement('div');
-            rowDiv.className = 'image-row-input';
-            
-            let cleanImageVal = imageVal;
-            if (cleanImageVal.includes('/') || cleanImageVal.includes('\\')) {
-                const parts = cleanImageVal.split(/[/\\]/);
-                cleanImageVal = parts[parts.length - 1];
-            }
-
-            rowDiv.dataset.existingImage = cleanImageVal;
-            
-            let initialDisplayUrl = urlVal;
-            if (!initialDisplayUrl && cleanImageVal) {
-                initialDisplayUrl = `/DeePublicNotes/Images/${cleanImageVal}`;
-            }
-
-            rowDiv.innerHTML = `
-                <div style="flex:1; min-width: 140px;">
-                    <label class="imglnk-label" style="font-size:11px; font-weight:bold; color:#333;">imglnk:</label>
-                    <input type="file" accept="image/*" class="modal-image-file" style="margin-top:2px; font-size:12px; width:100%;">
-                    <div class="modal-image-name-display" style="font-size:11px; color:#555; font-style:italic; margin-top:2px;">${cleanImageVal ? 'Current: ' + cleanImageVal : 'No file chosen'}</div>
-                </div>
-                <div style="flex:1.5; min-width: 180px;">
-                    <label style="font-size:11px; color:#555;">Image file:</label>
-                    <input type="text" class="modal-image-url" value="${initialDisplayUrl}" placeholder="filename.png" style="margin:0; padding:8px; font-size:14px; width:100%; box-sizing:border-box;">
-                </div>
-                <button type="button" onclick="this.parentElement.remove(); updateImageRowLabels();" style="color:red; padding:6px 10px; margin-top:16px;">✕</button>
-            `;
-
-            const fileInput = rowDiv.querySelector('.modal-image-file');
-            const nameDisplay = rowDiv.querySelector('.modal-image-name-display');
-            const urlInput = rowDiv.querySelector('.modal-image-url');
-
-            fileInput.addEventListener('change', (e) => {
-                if (e.target.files[0]) {
-                    const rawName = e.target.files[0].name;
-                    nameDisplay.textContent = `Selected: ${rawName}`;
-                    rowDiv.dataset.existingImage = rawName;
-                    urlInput.value = `/DeePublicNotes/Images/${rawName}`;
-                }
-            });
-
-            container.appendChild(rowDiv);
-            updateImageRowLabels();
-        }
-
-        function openAddModal() {
-            if (!isFileLoaded) return;
-            modalMode = 'add';
-            activeActionPathStr = null;
-            
-            if (selectedParentPathStr) {
-                const pathArr = selectedParentPathStr.split('-').map(Number);
-                const parentItem = getItemByPath(pathArr);
-                document.getElementById('modal-title').textContent = `Add Sub-level Item under "${parentItem ? parentItem.text : ''}"`;
-            } else {
-                document.getElementById('modal-title').textContent = 'Add New Root Item';
-            }
-
-            document.getElementById('modal-text').value = '';
-            document.getElementById('images-container').innerHTML = '';
-            addImageInputRow('', '');
-
-            document.getElementById('form-modal').style.display = 'flex';
-        }
-
-        function openEditModal(pathStr) {
-            if (!isFileLoaded) return;
-            modalMode = 'edit';
-            activeActionPathStr = pathStr;
-            document.getElementById('modal-title').textContent = `Edit News Item`;
-            
-            const pathArr = pathStr.split('-').map(Number);
-            const item = getItemByPath(pathArr);
-            if (item) {
-                document.getElementById('modal-text').value = item.text || '';
-                
-                const imagesContainer = document.getElementById('images-container');
-                imagesContainer.innerHTML = '';
-                const existingImages = Array.isArray(item.images) ? item.images : [];
-                if (existingImages.length > 0) {
-                    existingImages.forEach(img => addImageInputRow(img.image || '', img.url || ''));
-                } else {
-                    addImageInputRow('', '');
-                }
-
-                document.getElementById('form-modal').style.display = 'flex';
-            }
-        }
-
-        function closeFormModal() {
-            document.getElementById('form-modal').style.display = 'none';
-        }
-
-        function submitModalForm() {
-            if (!isFileLoaded) return;
-            const text = document.getElementById('modal-text').value.trim();
-            if (!text) {
-                alert('Text cannot be empty.');
-                return;
-            }
-
-            const imageRows = document.querySelectorAll('.image-row-input');
-            let images = [];
-            for (let row of imageRows) {
-                const fileInput = row.querySelector('.modal-image-file');
-                const urlInput = row.querySelector('.modal-image-url');
-                let imageName = row.dataset.existingImage || '';
-
-                if (fileInput.files && fileInput.files[0]) {
-                    imageName = fileInput.files[0].name;
-                }
-
-                if (imageName.includes('/') || imageName.includes('\\')) {
-                    const parts = imageName.split(/[/\\]/);
-                    imageName = parts[parts.length - 1];
-                }
-
-                let urlVal = urlInput.value.trim();
-                if (!urlVal && imageName) {
-                    urlVal = `/DeePublicNotes/Images/${imageName}`;
-                }
-
-                if (imageName !== '' || urlVal !== '') {
-                    images.push({
-                        image: imageName,
-                        url: urlVal
-                    });
-                }
-            }
-
-            if (modalMode === 'add') {
-                const newItem = { text: text, images: images, children: [] };
-                if (selectedParentPathStr) {
-                    const pathArr = selectedParentPathStr.split('-').map(Number);
-                    const parentItem = getItemByPath(pathArr);
-                    if (parentItem) {
-                        if (!Array.isArray(parentItem.children)) {
-                            parentItem.children = [];
-                        }
-                        parentItem.children.push(newItem);
-                        parentItem.children.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
-                    }
-                } else {
-                    notesTree.push(newItem);
-                    notesTree.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
-                }
-                selectedParentPathStr = null; // Clear selection after add
-            } else if (modalMode === 'edit') {
-                const pathArr = activeActionPathStr.split('-').map(Number);
-                const item = getItemByPath(pathArr);
-                if (item) {
-                    item.text = text;
-                    item.images = images;
-                }
-            }
-
-            saveToStorage();         
-            closeFormModal();        
-            handleOnloadSearchInput(); 
-        }
-
+        // --- Tree View Window Functionality ---
         function openTreeViewWindow() {
             if (!isFileLoaded) {
                 alert('Please select a JSON file first.');
@@ -650,6 +344,400 @@
                 </html>
             `);
             win.document.close();
+        }
+
+        function importBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const originalName = file.name;
+            document.getElementById('file-name-display').textContent = `Chosen file: ${originalName}`;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    let rawTree = Array.isArray(imported) ? imported : imported.tree;
+                    if (Array.isArray(rawTree)) {
+                        function sanitize(nodes) {
+                            return nodes.filter(n => n && typeof n === 'object').map(n => {
+                                let imagesArr = [];
+                                if (Array.isArray(n.images)) {
+                                    imagesArr = n.images.map(img => {
+                                        if (img && typeof img === 'object') {
+                                            let rawImgName = img.image || '';
+                                            if (rawImgName.includes('/') || rawImgName.includes('\\')) {
+                                                const parts = rawImgName.split(/[/\\]/);
+                                                rawImgName = parts[parts.length - 1];
+                                            }
+                                            let urlVal = img.url || '';
+                                            if (!urlVal && rawImgName) {
+                                                urlVal = rawImgName;
+                                            }
+                                            return {
+                                                image: rawImgName,
+                                                url: urlVal
+                                            };
+                                        }
+                                        return null;
+                                    }).filter(img => img && (img.image || img.url));
+                                } else if (typeof n.image === 'string' && n.image.trim() !== '') {
+                                    let cleanName = n.image.trim();
+                                    if (cleanName.includes('/') || cleanName.includes('\\')) {
+                                        const parts = cleanName.split(/[/\\]/);
+                                        cleanName = parts[parts.length - 1];
+                                    }
+                                    imagesArr = [{ image: cleanName, url: cleanName }];
+                                }
+
+                                return {
+                                    text: typeof n.text === 'string' ? n.text : '',
+                                    images: imagesArr,
+                                    children: Array.isArray(n.children) ? sanitize(n.children) : []
+                                };
+                            });
+                        }
+                        notesTree = sanitize(rawTree);
+                        notesTree.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
+                        
+                        isFileLoaded = true;
+                        selectedParentPathStr = null;
+                        saveToStorage();
+                        
+                        const formSection = document.getElementById('entry-form-section');
+                        formSection.style.opacity = '1';
+                        formSection.style.pointerEvents = 'auto';
+                        document.getElementById('modal-text').removeAttribute('disabled');
+                        document.getElementById('submit-form-btn').removeAttribute('disabled');
+                        document.querySelectorAll('.form-ctrl-btn').forEach(btn => btn.removeAttribute('disabled'));
+
+                        resetFormState();
+                    } else {
+                        alert('Invalid JSON file format.');
+                    }
+                } catch (err) {
+                    alert('Error reading JSON file.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function getPathDisplay(pathArr) {
+            let current = notesTree;
+            let titles = [];
+            for (let i = 0; i < pathArr.length; i++) {
+                let node = current[pathArr[i]];
+                if (node) {
+                    titles.push(node.text);
+                    current = node.children || [];
+                }
+            }
+            return titles.join(' > ');
+        }
+
+        function handleOnloadSearchInput() {
+            const container = document.getElementById('search-modal-existing-container');
+            const query = document.getElementById('modal-text').value.trim().toLowerCase();
+
+            if (query === '' || !isFileLoaded) {
+                container.innerHTML = '';
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'block';
+            positionDropdown();
+            container.innerHTML = '';
+
+            allFilteredItems = [];
+
+            function traverseAndCollect(nodes, path = []) {
+                nodes.forEach((node, idx) => {
+                    if (!node) return;
+                    const currentPath = [...path, idx];
+                    const pathStr = currentPath.join('-');
+                    
+                    const matches = node.text.toLowerCase().includes(query);
+                    if (matches) {
+                        allFilteredItems.push({ node, pathStr, currentPath });
+                    }
+
+                    if (Array.isArray(node.children) && node.children.length > 0) {
+                        traverseAndCollect(node.children, currentPath);
+                    }
+                });
+            }
+
+            traverseAndCollect(notesTree);
+
+            displayedItemCount = 0;
+            container.innerHTML = '';
+            appendNextChunk();
+            updateFormHeader();
+        }
+
+        function appendNextChunk() {
+            const container = document.getElementById('search-modal-existing-container');
+            if (allFilteredItems.length === 0) {
+                container.innerHTML = '<div style="color: #777; font-size: 12px; padding: 6px;">No matching entries found.</div>';
+                return;
+            }
+
+            const nextEnd = Math.min(displayedItemCount + CHUNK_SIZE, allFilteredItems.length);
+            for (let i = displayedItemCount; i < nextEnd; i++) {
+                const item = allFilteredItems[i];
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'modal-list-item';
+                
+                const isSelected = (item.pathStr === selectedParentPathStr);
+                if (isSelected) {
+                    itemDiv.style.background = '#e8f0fe';
+                    itemDiv.style.borderColor = '#1a73e8';
+                }
+
+                itemDiv.onclick = (e) => {
+                    e.stopPropagation();
+                    if (e.target.classList.contains('edit-btn-span') || e.target.closest('.edit-btn-span')) {
+                        openEditForm(item.pathStr);
+                    } else if (e.target.classList.contains('delete-btn-span') || e.target.closest('.delete-btn-span')) {
+                        deleteItem(item.pathStr);
+                    } else {
+                        selectedParentPathStr = item.pathStr;
+                        document.getElementById('modal-text').value = item.node.text;
+                        
+                        // Show selected item bar with text and links
+                        const fullPathStr = getPathDisplay(item.currentPath);
+                        document.getElementById('selected-item-text').textContent = fullPathStr;
+                        document.getElementById('selected-item-bar').style.display = 'flex';
+
+                        updateFormHeader();
+                        container.style.display = 'none';
+                    }
+                };
+                
+                const fullDisplayPath = getPathDisplay(item.currentPath);
+                let imgTagIndicator = (item.node.images && item.node.images.length > 0) ? ' 🖼️' : '';
+                
+                itemDiv.innerHTML = `
+                    <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:310px;" title="${fullDisplayPath}">
+                        ${fullDisplayPath}${imgTagIndicator}
+                    </span>
+                    <div style="display: flex; gap: 4px; flex-shrink: 0;">
+                        <span class="edit-btn-span" style="font-size:11px; color:#1a73e8; font-weight:bold; padding: 3px 6px; border: 1px solid #1a73e8; border-radius:3px; background:#fff;">Edit ✏️</span>
+                        <span class="delete-btn-span" style="font-size:11px; color:#d93025; font-weight:bold; padding: 3px 6px; border: 1px solid #d93025; border-radius:3px; background:#fff;">Delete 🗑️</span>
+                    </div>
+                `;
+                container.appendChild(itemDiv);
+            }
+            displayedItemCount = nextEnd;
+        }
+
+        function deleteItem(pathStr) {
+            if (!pathStr) return;
+            if (!confirm('Are you sure you want to delete this entry and all its sub-items?')) return;
+            const pathArr = pathStr.split('-').map(Number);
+            const lastIdx = pathArr.pop();
+            let current = notesTree;
+            for (let idx of pathArr) {
+                current = current[idx].children;
+            }
+            current.splice(lastIdx, 1);
+            saveToStorage();
+            clearSelectionAndReset();
+            handleOnloadSearchInput();
+        }
+
+        function handleGridScroll(e) {
+            const el = e.target;
+            if (el.scrollHeight - el.scrollTop - el.clientHeight < 20) {
+                if (displayedItemCount < allFilteredItems.length) {
+                    appendNextChunk();
+                }
+            }
+        }
+
+        function getItemByPath(pathArr) {
+            let current = notesTree;
+            for (let i = 0; i < pathArr.length - 1; i++) {
+                current = current[pathArr[i]].children;
+            }
+            return current[pathArr[pathArr.length - 1]];
+        }
+
+        function updateImageRowLabels() {
+            const rows = document.querySelectorAll('.image-row-input');
+            rows.forEach((row, index) => {
+                const label = row.querySelector('.imglnk-label');
+                if (label) {
+                    label.textContent = `imglnk${index + 1}:`;
+                }
+            });
+        }
+
+        function addImageInputRow(imageVal = '', urlVal = '') {
+            const container = document.getElementById('images-container');
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'image-row-input';
+            
+            let cleanImageVal = imageVal;
+            if (cleanImageVal.includes('/') || cleanImageVal.includes('\\')) {
+                const parts = cleanImageVal.split(/[/\\]/);
+                cleanImageVal = parts[parts.length - 1];
+            }
+
+            rowDiv.dataset.existingImage = cleanImageVal;
+            
+            let initialDisplayUrl = urlVal;
+            if (!initialDisplayUrl && cleanImageVal) {
+                initialDisplayUrl = `/DeePublicNotes/Images/${cleanImageVal}`;
+            }
+
+            rowDiv.innerHTML = `
+                <div style="flex:1; min-width: 140px;">
+                    <label class="imglnk-label" style="font-size:11px; font-weight:bold; color:#333;">imglnk:</label>
+                    <input type="file" accept="image/*" class="modal-image-file" style="margin-top:2px; font-size:12px; width:100%;">
+                    <div class="modal-image-name-display" style="font-size:11px; color:#555; font-style:italic; margin-top:2px;">${cleanImageVal ? 'Current: ' + cleanImageVal : 'No file chosen'}</div>
+                </div>
+                <div style="flex:1.5; min-width: 180px;">
+                    <label style="font-size:11px; color:#555;">Image file:</label>
+                    <input type="text" class="modal-image-url" value="${initialDisplayUrl}" placeholder="filename.png" style="margin:0; padding:6px; font-size:13px; width:100%; box-sizing:border-box;">
+                </div>
+                <button type="button" onclick="this.parentElement.remove(); updateImageRowLabels();" style="color:red; padding:4px 8px; margin-top:14px;">✕</button>
+            `;
+
+            const fileInput = rowDiv.querySelector('.modal-image-file');
+            const nameDisplay = rowDiv.querySelector('.modal-image-name-display');
+            const urlInput = rowDiv.querySelector('.modal-image-url');
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    const rawName = e.target.files[0].name;
+                    nameDisplay.textContent = `Selected: ${rawName}`;
+                    rowDiv.dataset.existingImage = rawName;
+                    urlInput.value = `/DeePublicNotes/Images/${rawName}`;
+                }
+            });
+
+            container.appendChild(rowDiv);
+            updateImageRowLabels();
+        }
+
+        function updateFormHeader() {
+            if (formMode !== 'add') return;
+            const titleEl = document.getElementById('form-section-title');
+            if (selectedParentPathStr) {
+                const pathArr = selectedParentPathStr.split('-').map(Number);
+                const parentItem = getItemByPath(pathArr);
+                titleEl.textContent = `Add Sub-level Item under "${parentItem ? parentItem.text : ''}"`;
+            } else {
+                titleEl.textContent = 'Add New Root Item';
+            }
+        }
+
+        function resetFormState() {
+            formMode = 'add';
+            activeActionPathStr = null;
+            document.getElementById('modal-text').value = '';
+            document.getElementById('selected-item-bar').style.display = 'none';
+            document.getElementById('images-container').innerHTML = '';
+            addImageInputRow('', '');
+            document.getElementById('cancel-edit-btn').style.display = 'none';
+            document.getElementById('submit-form-btn').textContent = 'Save Entry';
+            updateFormHeader();
+        }
+
+        function openEditForm(pathStr) {
+            if (!isFileLoaded || !pathStr) return;
+            formMode = 'edit';
+            activeActionPathStr = pathStr;
+            document.getElementById('form-section-title').textContent = 'Edit News Item';
+            document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+            document.getElementById('submit-form-btn').textContent = 'Update Changes';
+            document.getElementById('selected-item-bar').style.display = 'none';
+            
+            const pathArr = pathStr.split('-').map(Number);
+            const item = getItemByPath(pathArr);
+            if (item) {
+                document.getElementById('modal-text').value = item.text || '';
+                
+                const imagesContainer = document.getElementById('images-container');
+                imagesContainer.innerHTML = '';
+                const existingImages = Array.isArray(item.images) ? item.images : [];
+                if (existingImages.length > 0) {
+                    existingImages.forEach(img => addImageInputRow(img.image || '', img.url || ''));
+                } else {
+                    addImageInputRow('', '');
+                }
+            }
+            document.getElementById('search-modal-existing-container').style.display = 'none';
+        }
+
+        function submitModalForm() {
+            if (!isFileLoaded) return;
+            const text = document.getElementById('modal-text').value.trim();
+            if (!text) {
+                alert('Text cannot be empty.');
+                return;
+            }
+
+            const imageRows = document.querySelectorAll('.image-row-input');
+            let images = [];
+            for (let row of imageRows) {
+                const fileInput = row.querySelector('.modal-image-file');
+                const urlInput = row.querySelector('.modal-image-url');
+                let imageName = row.dataset.existingImage || '';
+
+                if (fileInput.files && fileInput.files[0]) {
+                    imageName = fileInput.files[0].name;
+                }
+
+                if (imageName.includes('/') || imageName.includes('\\')) {
+                    const parts = imageName.split(/[/\\]/);
+                    imageName = parts[parts.length - 1];
+                }
+
+                let urlVal = urlInput.value.trim();
+                if (!urlVal && imageName) {
+                    urlVal = `/DeePublicNotes/Images/${imageName}`;
+                }
+
+                if (imageName !== '' || urlVal !== '') {
+                    images.push({
+                        image: imageName,
+                        url: urlVal
+                    });
+                }
+            }
+
+            if (formMode === 'add') {
+                const newItem = { text: text, images: images, children: [] };
+                if (selectedParentPathStr) {
+                    const pathArr = selectedParentPathStr.split('-').map(Number);
+                    const parentItem = getItemByPath(pathArr);
+                    if (parentItem) {
+                        if (!Array.isArray(parentItem.children)) {
+                            parentItem.children = [];
+                        }
+                        parentItem.children.push(newItem);
+                        parentItem.children.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
+                    }
+                } else {
+                    notesTree.push(newItem);
+                    notesTree.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
+                }
+                selectedParentPathStr = null; 
+            } else if (formMode === 'edit') {
+                const pathArr = activeActionPathStr.split('-').map(Number);
+                const item = getItemByPath(pathArr);
+                if (item) {
+                    item.text = text;
+                    item.images = images;
+                }
+            }
+
+            saveToStorage();         
+            resetFormState();        
+            document.getElementById('search-modal-existing-container').style.display = 'none';
         }
     </script>
 

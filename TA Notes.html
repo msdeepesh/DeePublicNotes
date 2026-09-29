@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indented Tree Text to JSON Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        h2 {
+            margin: 0;
+        }
+        .right-tools {
+            display: flex;
+            gap: 8px;
+        }
+        button {
+            width: 40px;
+            height: 40px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .btn-download {
+            background-color: #28a745;
+        }
+        .btn-download:hover {
+            background-color: #218838;
+        }
+        .editor-container {
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            max-height: 500px; /* Adjust as needed */
+        }
+        .editor-container.collapsed {
+            max-height: 0;
+            padding: 0;
+            border: none;
+        }
+        textarea {
+            width: 100%;
+            min-height: 250px;
+            padding: 12px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            tab-size: 4;
+            resize: none;
+            overflow-y: hidden;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-row">
+        <h2>Indented Tree Text to JSON Converter</h2>
+        <div class="right-tools">
+            <button id="collapseBtn" title="Collapse Textarea" onclick="toggleTextarea()">▲</button>
+            <button class="btn-download" title="Create & Download JSON" onclick="generateAndDownloadJSON()">💾</button>
+        </div>
+    </div>
+    
+    <div id="editorContainer" class="editor-container">
+        <!-- Textarea is completely blank initially -->
+        <textarea id="inputText" placeholder="- Type your root item here..."></textarea>
+    </div>
+
+    <script>
+        const textarea = document.getElementById('inputText');
+        const editorContainer = document.getElementById('editorContainer');
+        const collapseBtn = document.getElementById('collapseBtn');
+
+        // Toggle textarea collapse/expand state
+        function toggleTextarea() {
+            editorContainer.classList.toggle('collapsed');
+            const isCollapsed = editorContainer.classList.contains('collapsed');
+            collapseBtn.textContent = isCollapsed ? '▼' : '▲';
+            collapseBtn.title = isCollapsed ? 'Expand Textarea' : 'Collapse Textarea';
+        }
+
+        // Dynamic height adjustment
+        function autoResize() {
+            if (!editorContainer.classList.contains('collapsed')) {
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
+            }
+        }
+
+        textarea.addEventListener('input', autoResize);
+        window.addEventListener('load', autoResize);
+
+        // Handle Tab for indentation and Enter for tree continuation with matching hyphens
+        textarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const value = textarea.value;
+
+                const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+                const lineEnd = value.indexOf('\n', end);
+                const actualEnd = lineEnd === -1 ? value.length : lineEnd;
+
+                const selectedLinesText = value.substring(lineStart, actualEnd);
+                const lines = selectedLinesText.split('\n');
+
+                const modifiedLines = lines.map(line => {
+                    const cleanMatch = line.match(/^(\t*)(?:-+\s*)?(.*)$/);
+                    let tabs = cleanMatch ? cleanMatch[1].length : 0;
+                    const content = cleanMatch ? cleanMatch[2] : line.trim();
+
+                    if (!e.shiftKey) {
+                        tabs += 1; // Increase indent
+                    } else {
+                        tabs = Math.max(0, tabs - 1); // Decrease indent
+                    }
+
+                    const hyphens = '-'.repeat(tabs + 1);
+                    const tabStr = '\t'.repeat(tabs);
+                    return `${tabStr}${hyphens} ${content}`;
+                });
+
+                const replacement = modifiedLines.join('\n');
+                textarea.value = value.substring(0, lineStart) + replacement + value.substring(actualEnd);
+                
+                textarea.focus();
+                textarea.setSelectionRange(start, start + (replacement.length - selectedLinesText.length));
+                autoResize();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const start = textarea.selectionStart;
+                const value = textarea.value;
+                
+                const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+                const currentLine = value.substring(lineStart, start);
+                const match = currentLine.match(/^(\t*)(?:-+\s*)?/);
+                const tabs = match ? match[1].length : 0;
+
+                const hyphens = '-'.repeat(tabs + 1);
+                const tabStr = '\t'.repeat(tabs);
+                const insertion = `\n${tabStr}${hyphens} `;
+
+                textarea.value = value.substring(0, start) + insertion + value.substring(textarea.selectionEnd);
+                const newPos = start + insertion.length;
+                textarea.setSelectionRange(newPos, newPos);
+                autoResize();
+            }
+        });
+
+        // Helper functions for filename generation
+        function getFormattedDate() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}${month}${day}`;
+        }
+
+        function getNextSeqNumber() {
+            let seq = parseInt(localStorage.getItem('json_seq_num') || '0', 10) + 1;
+            localStorage.setItem('json_seq_num', seq);
+            return String(seq).padStart(2, '0');
+        }
+
+        // Convert textarea tree structure to JSON matching the required schema and trigger download[cite: 1]
+        function generateAndDownloadJSON() {
+            const text = textarea.value;
+            const lines = text.split('\n');
+            const root = { tree: [] };
+            const stack = [{ level: -1, children: root.tree }];
+
+            lines.forEach(line => {
+                if (!line.trim()) return;
+
+                const match = line.match(/^(\t*)(?:-+\s*)?(.*)$/);
+                const tabs = match ? match[1].length : 0;
+                const level = tabs;
+                const nodeText = match ? match[2].trim() : line.trim();
+
+                if (!nodeText) return;
+
+                const node = {
+                    text: nodeText,
+                    links: [],
+                    children: []
+                };
+
+                while (stack.length > 1 && stack[stack.length - 1].level >= level) {
+                    stack.pop();
+                }
+
+                stack[stack.length - 1].children.push(node);
+                stack.push({ level: level, children: node.children });
+            });
+
+            const jsonString = JSON.stringify(root, null, 2);
+            
+            const dateStr = getFormattedDate();
+            const seqStr = getNextSeqNumber();
+            const filename = `JSON_${dateStr}_${seqStr}.json`;
+
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
