@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>News</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f5f5f5;
+            color: #000;
+            margin: 30px;
+        }
+        h1 {
+            font-size: 28px;
+            color: #00e;
+            font-family: "Times New Roman", Times, serif;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        /* Top Action Toolbar */
+        .top-toolbar {
+            background: #eef2f5;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .top-toolbar button {
+            font-size: 14px;
+            cursor: pointer;
+            background: #e0e0e0;
+            border: 1px solid #999;
+            padding: 4px 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .top-toolbar button:hover {
+            background: #d0d0d0;
+        }
+        .top-toolbar input[type="text"] {
+            font-size: 12px;
+            padding: 4px 6px;
+            border: 1px solid #999;
+            width: 140px;
+        }
+        .item-row {
+            margin: 4px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 6px 8px;
+            background: #fff;
+            border: 1px solid #ddd;
+            user-select: none;
+        }
+        .item-row:hover {
+            background: #f0f4f8;
+        }
+        .item-row.selected {
+            background: #d2e3fc;
+            border-color: #1a73e8;
+        }
+        .item-row.search-match {
+            border-color: #f29900;
+            background-color: #fef9e7;
+        }
+        /* Indentation levels (up to 6 levels: 0 to 5) */
+        .level-0 { margin-left: 0px; font-weight: bold; }
+        .level-1 { margin-left: 25px; font-weight: normal; }
+        .level-2 { margin-left: 50px; font-weight: normal; }
+        .level-3 { margin-left: 75px; font-weight: normal; }
+        .level-4 { margin-left: 100px; font-weight: normal; font-style: italic; }
+        .level-5 { margin-left: 125px; font-weight: normal; font-style: italic; }
+        .level-6 { margin-left: 150px; font-weight: normal; font-style: italic; }
+
+        .collapse-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 0 4px;
+            color: #333;
+        }
+
+        a {
+            color: #00e;
+            text-decoration: none;
+            margin-right: 4px;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        /* Modal Overlay for Add/Edit Form */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.3);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal {
+            background: #fff;
+            padding: 15px;
+            border: 1px solid #999;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            width: 480px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .modal input[type="text"] {
+            width: 100%;
+            padding: 5px;
+            margin-top: 3px;
+            margin-bottom: 6px;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+        .link-row-input {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+            align-items: center;
+            background: #f9f9f9;
+            padding: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-start;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        /* Dynamic Existing Entries list inside Modal */
+        .modal-existing-list {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            padding: 8px;
+            max-height: 140px;
+            overflow-y: auto;
+            margin-bottom: 12px;
+        }
+        .modal-list-item {
+            font-size: 12px;
+            padding: 4px 6px;
+            margin: 2px 0;
+            background: #fff;
+            border: 1px solid #e5e5e5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>News</h1>
+
+    <!-- Top Action Toolbar -->
+    <div class="top-toolbar">
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <strong>Actions:</strong>
+            <button onclick="openAddModal()" title="Add">➕</button>
+            <button onclick="openEditModal()" title="Edit">✏️</button>
+            <button onclick="deleteSelected()" title="Delete" style="color: red;">🗑️</button>
+            <span style="border-left: 1px solid #ccc; height: 20px; margin: 0 5px;"></span>
+            <button onclick="exportBackup()" title="Export Backup">💾</button>
+            <button onclick="triggerImport()" title="Import Backup">📂</button>
+            <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importBackup(event)">
+            <span id="selection-indicator" style="font-size: 12px; color: #555; margin-left: auto;">No line selected</span>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border-top: 1px solid #ddd; padding-top: 8px;">
+            <input type="text" id="searchInput" placeholder="Search all levels..." oninput="handleSearch()">
+            <button onclick="expandAll()" title="Expand All">⤢</button>
+            <button onclick="collapseAll()" title="Collapse All">⤡</button>
+        </div>
+    </div>
+
+    <!-- News Container -->
+    <div id="notes-container"></div>
+
+    <!-- Modal Form for Add / Edit -->
+    <div id="form-modal" class="modal-overlay">
+        <div class="modal">
+            <h3 id="modal-title" style="margin-top:0; font-size:16px;">Add News Item</h3>
+            
+            <label style="font-size: 12px;" id="modal-text-label">Text description:</label>
+            <input type="text" id="modal-text" placeholder="Enter news text..." oninput="handleModalTextInput()">
+            
+            <!-- Dynamic Existing Entries Section (Visible only when typing in Add mode) -->
+            <div id="modal-existing-section" style="display: none;">
+                <label style="font-size: 12px; font-weight: bold; color: #333;">Matching Existing Entries (Click Edit to modify):</label>
+                <div id="modal-existing-container" class="modal-existing-list">
+                    <!-- Populated dynamically as user types -->
+                </div>
+                <hr style="border:0; border-top:1px solid #eee; margin: 10px 0;">
+            </div>
+
+            <label style="font-size: 12px; display: block; margin-top: 8px;">Hyperlinks (Title & URL):</label>
+            <div id="links-container" style="margin-bottom: 5px;">
+                <!-- Dynamic link input rows go here -->
+            </div>
+            <button type="button" onclick="addLinkInputRow('', '')" style="font-size: 11px; margin-bottom: 10px;">+ Add Link</button>
+
+            <div class="modal-buttons">
+                <button onclick="closeModal()">Cancel</button>
+                <button onclick="submitModalForm()" style="background: #d2e3fc;" id="modal-submit-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Distinct storage keys for News
+        let collapsedMap = JSON.parse(localStorage.getItem('ai_news_collapsed')) || {};
+
+        function sortRootTree() {
+            if (Array.isArray(notesTree)) {
+                notesTree.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
+            }
+        }
+
+        function loadAndCleanStorage() {
+            try {
+                let raw = JSON.parse(localStorage.getItem('ai_news_tree'));
+                if (!Array.isArray(raw)) return [];
+                
+                function sanitize(nodes) {
+                    return nodes.filter(n => n && typeof n === 'object').map(n => {
+                        let linksArr = [];
+                        if (Array.isArray(n.links)) {
+                            linksArr = n.links.map(l => {
+                                if (typeof l === 'string') {
+                                    return { title: l, url: l };
+                                }
+                                if (l && typeof l === 'object') {
+                                    return {
+                                        title: typeof l.title === 'string' && l.title.trim() !== '' ? l.title : (l.url || 'Link'),
+                                        url: typeof l.url === 'string' ? l.url : ''
+                                    };
+                                }
+                                return null;
+                            }).filter(l => l && l.url);
+                        } else if (typeof n.url === 'string' && n.url.trim() !== '') {
+                            linksArr = [{ title: n.text || 'Link', url: n.url.trim() }];
+                        }
+
+                        return {
+                            text: typeof n.text === 'string' ? n.text : '',
+                            links: linksArr,
+                            children: Array.isArray(n.children) ? sanitize(n.children) : []
+                        };
+                    });
+                }
+                let sanitized = sanitize(raw);
+                sanitized.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
+                return sanitized;
+            } catch (e) {
+                return [];
+            }
+        }
+
+        let notesTree = loadAndCleanStorage();
+        let selectedPathStr = null; 
+        let activeActionPathStr = null;
+        let modalMode = 'add'; 
+        let searchQuery = '';
+        const MAX_LEVEL = 6; // Allows up to 6 levels (0 to 5)[cite: 1]
+
+        function saveToStorage() {
+            sortRootTree();
+            localStorage.setItem('ai_news_tree', JSON.stringify(notesTree));
+            localStorage.setItem('ai_news_tree_backup', JSON.stringify(notesTree));
+            localStorage.setItem('ai_news_collapsed', JSON.stringify(collapsedMap));
+        }
+
+        // Global click listener to deselect when clicking outside rows/toolbar/modal[cite: 1]
+        document.addEventListener('click', (e) => {
+            const rowTarget = e.target.closest('.item-row');
+            const modalTarget = e.target.closest('.modal');
+            const toolbarTarget = e.target.closest('.top-toolbar');
+            
+            if (!rowTarget && !toolbarTarget && !modalTarget) {
+                deselectAll();
+            }
+        });
+
+        function deselectAll() {
+            selectedPathStr = null;
+            document.querySelectorAll('.item-row').forEach(row => row.classList.remove('selected'));
+            updateSelectionIndicator();
+        }
+
+        function handleSearch() {
+            searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+            renderNotes();
+        }
+
+        // --- EXPAND / COLLAPSE ALL HELPERS ---[cite: 1]
+        function collectAllParentPaths(nodes, path = [], map = {}) {
+            nodes.forEach((node, idx) => {
+                if (node && Array.isArray(node.children) && node.children.length > 0) {
+                    const currentPath = [...path, idx].join('-');
+                    map[currentPath] = true;
+                    collectAllParentPaths(node.children, [...path, idx], map);
+                }
+            });
+            return map;
+        }
+
+        function expandAll() {
+            collapsedMap = {}; 
+            saveToStorage();
+            renderNotes();
+        }
+
+        function collapseAll() {
+            collapsedMap = collectAllParentPaths(notesTree);
+            saveToStorage();
+            renderNotes();
+        }
+
+        function nodeMatchesQuery(item, query) {
+            if (!query) return false;
+            if (item.text.toLowerCase().includes(query)) return true;
+            if (Array.isArray(item.links)) {
+                for (let l of item.links) {
+                    if ((l.title && l.title.toLowerCase().includes(query)) || (l.url && l.url.toLowerCase().includes(query))) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function treeContainsMatch(item, query) {
+            if (!query) return true;
+            if (nodeMatchesQuery(item, query)) return true;
+            if (Array.isArray(item.children)) {
+                for (let child of item.children) {
+                    if (treeContainsMatch(child, query)) return true;
+                }
+            }
+            return false;
+        }
+
+        function renderNotes() {
+            const container = document.getElementById('notes-container');
+            container.innerHTML = '';
+
+            if (notesTree.length === 0) {
+                container.innerHTML = '<div style="color: #666; font-size: 13px; padding: 10px;">No news items yet. Click "Add" above to create one.[cite: 1]</div>';
+                selectedPathStr = null;
+                updateSelectionIndicator();
+                return;
+            }
+
+            let hasAnyVisible = false;
+            notesTree.forEach((item, index) => {
+                if (item && (!searchQuery || treeContainsMatch(item, searchQuery))) {
+                    hasAnyVisible = true;
+                    renderItem(item, index, [index], 0, container, false);
+                }
+            });
+
+            if (!hasAnyVisible && searchQuery) {
+                container.innerHTML = `<div style="color: #666; font-size: 13px; padding: 10px;">No matches found for "${searchQuery}".</div>`;
+            }
+        }
+
+        function renderItem(item, index, path, level, container, isParentCollapsed) {
+            if (!item) return;
+            const pathStr = path.join('-');
+            
+            if (isParentCollapsed) return;
+            if (searchQuery && !treeContainsMatch(item, searchQuery)) return;
+
+            const div = document.createElement('div');
+            const cssLevel = Math.min(level, MAX_LEVEL);
+            const isMatch = searchQuery ? nodeMatchesQuery(item, searchQuery) : false;
+            
+            div.className = `item-row level-${cssLevel} ${selectedPathStr === pathStr ? 'selected' : ''} ${isMatch ? 'search-match' : ''}`;
+            div.setAttribute('data-path', pathStr);
+
+            div.onclick = () => {
+                selectItem(pathStr);
+            };
+
+            const text = item.text || '';
+            const links = Array.isArray(item.links) ? item.links : [];
+
+            let prefixHTML = '';
+            const hasChildren = item.children && Array.isArray(item.children) && item.children.length > 0;
+            
+            if (hasChildren) {
+                const isCollapsed = searchQuery ? false : !!collapsedMap[pathStr];
+                prefixHTML = `<button class="collapse-btn" onclick="toggleCollapse(event, '${pathStr}')">${isCollapsed ? '[+]' : '[-]'}</button>`;
+            } else {
+                prefixHTML = `<span style="display:inline-block; width:16px;"></span>`;
+            }
+
+            let textSpan = `<span style="font-weight:inherit;">${text}</span>`;
+            
+            let linksHTML = '';
+            if (links.length > 0) {
+                links.forEach((lnk) => {
+                    const title = lnk.title || lnk.url;
+                    linksHTML += ` <a href="${lnk.url}" target="_blank" onclick="event.stopPropagation()">[${title}]</a>`;
+                });
+            }
+
+            div.innerHTML = prefixHTML + textSpan + linksHTML;
+            container.appendChild(div);
+
+            const currentCollapsed = searchQuery ? false : !!collapsedMap[pathStr];
+            if (hasChildren) {
+                item.children.forEach((child, childIndex) => {
+                    if (child) renderItem(child, childIndex, [...path, childIndex], level + 1, container, currentCollapsed);
+                });
+            }
+        }
+
+        function toggleCollapse(event, pathStr) {
+            event.stopPropagation();
+            if (searchQuery) return; 
+            collapsedMap[pathStr] = !collapsedMap[pathStr];
+            saveToStorage();
+            renderNotes();
+        }
+
+        function selectItem(pathStr) {
+            selectedPathStr = pathStr;
+            document.querySelectorAll('.item-row').forEach(row => {
+                if (row.getAttribute('data-path') === pathStr) {
+                    row.classList.add('selected');
+                } else {
+                    row.classList.remove('selected');
+                }
+            });
+            updateSelectionIndicator();
+        }
+
+        function updateSelectionIndicator() {
+            const indicator = document.getElementById('selection-indicator');
+            if (selectedPathStr) {
+                indicator.textContent = `Selected: Line [${selectedPathStr}]`;
+            } else {
+                indicator.textContent = `No line selected`;
+            }
+        }
+
+        function getItemByPath(pathArr) {
+            let current = notesTree;
+            for (let i = 0; i < pathArr.length - 1; i++) {
+                current = current[pathArr[i]].children;
+            }
+            return current[pathArr[pathArr.length - 1]];
+        }
+
+        function getParentContainerByPath(pathArr) {
+            if (pathArr.length === 1) return notesTree;
+            let current = notesTree;
+            for (let i = 0; i < pathArr.length - 2; i++) {
+                current = current[pathArr[i]].children;
+            }
+            return current[pathArr[pathArr.length - 2]].children;
+        }
+
+        // --- BACKUP & RECOVERY FUNCTIONS ---[cite: 1]
+        function exportBackup() {
+            const exportData = {
+                tree: notesTree,
+                collapsed: collapsedMap
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `ai_news_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function triggerImport() {
+            document.getElementById('importFile').click();
+        }
+
+        function importBackup(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    let rawTree = Array.isArray(imported) ? imported : imported.tree;
+                    if (Array.isArray(rawTree)) {
+                        notesTree = rawTree;
+                        sortRootTree();
+                        if (imported.collapsed && typeof imported.collapsed === 'object') {
+                            collapsedMap = imported.collapsed;
+                        }
+                        saveToStorage();
+                        renderNotes();
+                        alert('News backup successfully restored!');
+                    } else {
+                        alert('Invalid backup file format.');
+                    }
+                } catch (err) {
+                    alert('Error reading backup file.');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; 
+        }
+
+        // --- DYNAMIC FILTERING AS USER TYPES IN ADD MODE ---
+        function handleModalTextInput() {
+            if (modalMode !== 'add') return;
+
+            const query = document.getElementById('modal-text').value.trim().toLowerCase();
+            const section = document.getElementById('modal-existing-section');
+            const container = document.getElementById('modal-existing-container');
+
+            if (query === '') {
+                section.style.display = 'none';
+                container.innerHTML = '';
+                return;
+            }
+
+            section.style.display = 'block';
+            container.innerHTML = '';
+
+            let matchFound = false;
+
+            function traverseAndAppendFiltered(nodes, path = []) {
+                nodes.forEach((node, idx) => {
+                    if (!node) return;
+                    const currentPath = [...path, idx];
+                    const pathStr = currentPath.join('-');
+                    
+                    const matches = node.text.toLowerCase().includes(query);
+                    if (matches) {
+                        matchFound = true;
+                        const indent = path.length * 15;
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'modal-list-item';
+                        itemDiv.style.marginLeft = `${indent}px`;
+                        itemDiv.innerHTML = `
+                            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:320px;" title="${node.text}">
+                                <strong>[${pathStr}]</strong> ${node.text}
+                            </span>
+                            <button type="button" onclick="switchToEditFromModal('${pathStr}')" style="font-size:11px; padding:2px 6px; cursor:pointer; background:#e0e0e0; border:1px solid #999;">Edit</button>
+                        `;
+                        container.appendChild(itemDiv);
+                    }
+
+                    if (Array.isArray(node.children) && node.children.length > 0) {
+                        traverseAndAppendFiltered(node.children, currentPath);
+                    }
+                });
+            }
+
+            traverseAndAppendFiltered(notesTree);
+
+            if (!matchFound) {
+                container.innerHTML = '<div style="color: #777; font-size: 11px; padding: 4px;">No matching entries found.</div>';
+            }
+        }
+
+        // Switch from Add view to Edit view for a specific item dynamically inside the modal
+        function switchToEditFromModal(pathStr) {
+            modalMode = 'edit';
+            activeActionPathStr = pathStr;
+            document.getElementById('modal-title').textContent = `Edit News Item [${pathStr}]`;
+            document.getElementById('modal-existing-section').style.display = 'none'; // Hide list during active editing
+
+            const pathArr = pathStr.split('-').map(Number);
+            const item = getItemByPath(pathArr);
+            if (item) {
+                document.getElementById('modal-text').value = item.text || '';
+                const linksContainer = document.getElementById('links-container');
+                linksContainer.innerHTML = '';
+
+                const existingLinks = Array.isArray(item.links) ? item.links : [];
+                if (existingLinks.length > 0) {
+                    existingLinks.forEach(lnk => addLinkInputRow(lnk.title || '', lnk.url || ''));
+                } else {
+                    addLinkInputRow('', '');
+                }
+            }
+        }
+
+        // --- MODAL HANDLERS FOR MULTI-LINK WITH TITLES ---[cite: 1]
+        function addLinkInputRow(titleVal = '', urlVal = '') {
+            const container = document.getElementById('links-container');
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'link-row-input';
+            rowDiv.innerHTML = `
+                <div style="flex:1;">
+                    <label style="font-size:10px; color:#555;">Title:</label>
+                    <input type="text" class="modal-link-title" value="${titleVal}" placeholder="e.g., TechCrunch Article" style="margin:0;">
+                </div>
+                <div style="flex:1.5;">
+                    <label style="font-size:10px; color:#555;">URL:</label>
+                    <input type="text" class="modal-link-url" value="${urlVal}" placeholder="https://..." style="margin:0;">
+                </div>
+                <button type="button" onclick="this.parentElement.remove()" style="font-size:11px; color:red; padding:4px 6px; margin-top:14px;">✕</button>
+            `;
+            container.appendChild(rowDiv);
+        }
+
+        function openAddModal() {
+            modalMode = 'add';
+            activeActionPathStr = selectedPathStr; 
+            document.getElementById('modal-title').textContent = activeActionPathStr ? 'Add Sub-news Item' : 'Add Main News Item';
+            document.getElementById('modal-existing-section').style.display = 'none'; // Hidden initially until typing
+            document.getElementById('modal-text').value = '';
+            document.getElementById('links-container').innerHTML = '';
+            
+            if (activeActionPathStr) {
+                const pathArr = activeActionPathStr.split('-').map(Number);
+                if (pathArr.length >= MAX_LEVEL) {
+                    alert(`Maximum nesting depth reached. Cannot add deeper sub-lines here.[cite: 1]`);
+                    return;
+                }
+            }
+
+            addLinkInputRow('', '');
+            document.getElementById('form-modal').style.display = 'flex';
+        }
+
+        function openEditModal() {
+            if (!selectedPathStr) {
+                alert('Please select a line first to edit.');
+                return;
+            }
+            modalMode = 'edit';
+            activeActionPathStr = selectedPathStr; 
+            document.getElementById('modal-title').textContent = `Edit News Item [${selectedPathStr}]`;
+            document.getElementById('modal-existing-section').style.display = 'none'; // Hidden in edit mode
+            
+            const pathArr = activeActionPathStr.split('-').map(Number);
+            const item = getItemByPath(pathArr);
+            if (item) {
+                document.getElementById('modal-text').value = item.text || '';
+                const linksContainer = document.getElementById('links-container');
+                linksContainer.innerHTML = '';
+
+                const existingLinks = Array.isArray(item.links) ? item.links : [];
+                if (existingLinks.length > 0) {
+                    existingLinks.forEach(lnk => addLinkInputRow(lnk.title || '', lnk.url || ''));
+                } else {
+                    addLinkInputRow('', '');
+                }
+
+                document.getElementById('form-modal').style.display = 'flex';
+            } else {
+                alert('Selected line could not be found.');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('form-modal').style.display = 'none';
+            activeActionPathStr = null;
+        }
+
+        function submitModalForm() {
+            const text = document.getElementById('modal-text').value.trim();
+            if (!text) {
+                alert('Text cannot be empty.');
+                return;
+            }
+
+            const titleInputs = document.querySelectorAll('.modal-link-title');
+            const urlInputs = document.querySelectorAll('.modal-link-url');
+            let links = [];
+
+            for (let i = 0; i < urlInputs.length; i++) {
+                const urlVal = urlInputs[i].value.trim();
+                const titleVal = titleInputs[i].value.trim();
+                if (urlVal !== '') {
+                    links.push({
+                        title: titleVal !== '' ? titleVal : urlVal,
+                        url: urlVal
+                    });
+                }
+            }
+
+            if (modalMode === 'add') {
+                if (!activeActionPathStr) {
+                    notesTree.push({ text: text, links: links, children: [] });
+                } else {
+                    const pathArr = activeActionPathStr.split('-').map(Number);
+                    const parentItem = getItemByPath(pathArr);
+                    if (!parentItem.children) parentItem.children = [];
+                    parentItem.children.push({ text: text, links: links, children: [] });
+                }
+            } else if (modalMode === 'edit') {
+                if (!activeActionPathStr) {
+                    alert('No line selected for editing.');
+                    return;
+                }
+                const pathArr = activeActionPathStr.split('-').map(Number);
+                const item = getItemByPath(pathArr);
+                if (item) {
+                    item.text = text;
+                    item.links = links;
+                }
+            }
+
+            saveToStorage();
+            closeModal();
+            renderNotes();
+        }
+
+        // --- DELETE SELECTED ---[cite: 1]
+        function deleteSelected() {
+            if (!selectedPathStr) {
+                alert('Please select a line to delete.');
+                return;
+            }
+            if (!confirm('Are you sure you want to delete this line and all its sub-lines?')) return;
+
+            const pathArr = selectedPathStr.split('-').map(Number);
+            if (pathArr.length === 1) {
+                notesTree.splice(pathArr[0], 1);
+            } else {
+                const parentArr = getParentContainerByPath(pathArr);
+                parentArr.splice(pathArr[pathArr.length - 1], 1);
+            }
+
+            selectedPathStr = null;
+            saveToStorage();
+            renderNotes();
+        }
+
+        // Initial Load
+        renderNotes();
+    </script>
+
+</body>
+</html>
