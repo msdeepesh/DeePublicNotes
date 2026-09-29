@@ -51,7 +51,7 @@
         .editor-container {
             overflow: hidden;
             transition: max-height 0.3s ease;
-            max-height: 500px; /* Adjust as needed */
+            max-height: 500px;
         }
         .editor-container.collapsed {
             max-height: 0;
@@ -86,7 +86,7 @@
     
     <div id="editorContainer" class="editor-container">
         <!-- Textarea is completely blank initially -->
-        <textarea id="inputText" placeholder="- Type your root item here..."></textarea>
+        <textarea id="inputText" placeholder="- Type your root item here... (e.g., Node Text {https://example.com})"></textarea>
     </div>
 
     <script>
@@ -129,9 +129,12 @@
                 const lines = selectedLinesText.split('\n');
 
                 const modifiedLines = lines.map(line => {
-                    const cleanMatch = line.match(/^(\t*)(?:-+\s*)?(.*)$/);
+                    const cleanMatch = line.match(/^(\t*)(?:-+\s*)?(.*?)(?:\s*\{[^}]*\})?$/);
                     let tabs = cleanMatch ? cleanMatch[1].length : 0;
-                    const content = cleanMatch ? cleanMatch[2] : line.trim();
+                    
+                    // Extract full text content including any link block
+                    const fullMatch = line.match(/^(\t*)(?:-+\s*)?(.*)$/);
+                    const content = fullMatch ? fullMatch[2] : line.trim();
 
                     if (!e.shiftKey) {
                         tabs += 1; // Increase indent
@@ -186,26 +189,54 @@
             return String(seq).padStart(2, '0');
         }
 
-        // Convert textarea tree structure to JSON matching the required schema and trigger download[cite: 1]
+        // Convert textarea tree structure to JSON and parse links from {} blocks with auto-incrementing lnk_<running number> titles
         function generateAndDownloadJSON() {
             const text = textarea.value;
             const lines = text.split('\n');
             const root = { tree: [] };
             const stack = [{ level: -1, children: root.tree }];
+            
+            let linkCounter = 1; // Running number counter for automatic link titles
 
             lines.forEach(line => {
                 if (!line.trim()) return;
 
-                const match = line.match(/^(\t*)(?:-+\s*)?(.*)$/);
+                // Match indentation tabs, hyphens, node text, and optional {link} block
+                const match = line.match(/^(\t*)(?:-+\s*)?(.*?)(?:\s*\{([^}]*)\})?$/);
                 const tabs = match ? match[1].length : 0;
                 const level = tabs;
-                const nodeText = match ? match[2].trim() : line.trim();
+                const nodeText = match && match[2] ? match[2].trim() : line.trim();
+                const linksStr = match && match[3] ? match[3].trim() : '';
+                
+                const links = [];
+                if (linksStr) {
+                    linksStr.split(',').forEach(l => {
+                        const trimmedL = l.trim();
+                        const parts = trimmedL.split('|');
+                        
+                        if (parts.length === 2) {
+                            // Explicit title provided (e.g., {lstcnt | https://...})
+                            links.push({
+                                title: parts[0].trim(),
+                                url: parts[1].trim()
+                            });
+                        } else {
+                            // Only URL provided; auto-generate title as lnk_<running number>
+                            const autoTitle = `lnk_${String(linkCounter).padStart(2, '0')}`;
+                            linkCounter++;
+                            links.push({
+                                title: autoTitle,
+                                url: trimmedL
+                            });
+                        }
+                    });
+                }
 
                 if (!nodeText) return;
 
                 const node = {
                     text: nodeText,
-                    links: [],
+                    links: links,
                     children: []
                 };
 
