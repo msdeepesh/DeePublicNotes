@@ -1,0 +1,5 @@
+
+* **GRANULAR SUB-BASE (GSB):** This is the very bottom layer of crushed rocks and soil, designed to create a stable platform on the native ground and improve drainage.
+* **WET MIX MACADAM (WMM) — FOUNDATION:** This is the primary structural foundation layer (which we discussed in detail earlier). It is made of crushed stones mixed with water and compacted tightly to create a rock-solid base that supports everything above it.
+* **DENSE BITUMINOUS MACADAM (DBM) — STRUCTURAL LAYER:** This is the heavy-duty blacktop layer. It is a hot mixture of stones and liquid tar (bitumen). It adds significant strength, handles the weight of heavy trucks, and acts as a waterproof barrier to protect the layers underneath.
+* **WEARING COURSE — SURFACE:** This is the final, smooth blacktop you actually drive on. It provides a smooth, skid-resistant surface and protects all the structural layers below from weather and traffic.
