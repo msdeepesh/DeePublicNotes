@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>News</title>
+    <title>News Manager</title>
     <style>
         body {
             font-family: Arial, Helvetica, sans-serif;
@@ -18,733 +18,391 @@
             padding-bottom: 5px;
             margin-bottom: 15px;
         }
-        /* Top Action Toolbar */
         .top-toolbar {
             background: #eef2f5;
             border: 1px solid #ccc;
             padding: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
             display: flex;
-            flex-direction: column;
-            gap: 8px;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
         }
         .top-toolbar button {
             font-size: 14px;
             cursor: pointer;
             background: #e0e0e0;
             border: 1px solid #999;
-            padding: 4px 8px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+            padding: 4px 10px;
         }
         .top-toolbar button:hover {
             background: #d0d0d0;
         }
-        .top-toolbar input[type="text"] {
-            font-size: 12px;
-            padding: 4px 6px;
-            border: 1px solid #999;
-            width: 140px;
+        .top-toolbar button.primary {
+            background: #e3f2fd;
+            color: #0d47a1;
+            border-color: #90caf9;
         }
-        .item-row {
-            margin: 4px 0;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            padding: 6px 8px;
-            background: #fff;
-            border: 1px solid #ddd;
-            user-select: none;
+        .top-toolbar button.primary:hover {
+            background: #bbdefb;
         }
-        .item-row:hover {
-            background: #f0f4f8;
-        }
-        .item-row.selected {
-            background: #d2e3fc;
-            border-color: #1a73e8;
-        }
-        .item-row.search-match {
-            border-color: #f29900;
-            background-color: #fef9e7;
-        }
-        /* Indentation levels (up to 6 levels: 0 to 5) */
-        .level-0 { margin-left: 0px; font-weight: bold; }
-        .level-1 { margin-left: 25px; font-weight: normal; }
-        .level-2 { margin-left: 50px; font-weight: normal; }
-        .level-3 { margin-left: 75px; font-weight: normal; }
-        .level-4 { margin-left: 100px; font-weight: normal; font-style: italic; }
-        .level-5 { margin-left: 125px; font-weight: normal; font-style: italic; }
-        .level-6 { margin-left: 150px; font-weight: normal; font-style: italic; }
 
-        .collapse-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: bold;
-            padding: 0 4px;
+        /* Workspace with single text area and custom dropdown */
+        .workspace {
+            max-width: 800px;
+            margin-top: 20px;
+        }
+        .pane {
+            background: #fff;
+            border: 1px solid #bbb;
+            padding: 15px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .pane h3 {
+            margin-top: 0;
+            font-size: 16px;
+            color: #c62828;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        .textarea-wrapper {
+            position: relative;
+        }
+        .pane textarea {
+            width: 100%;
+            height: 400px;
+            font-family: monospace;
+            font-size: 13px;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            resize: vertical;
+            white-space: pre-wrap;
+        }
+
+        /* Duplicates Results Panel */
+        .sync-results {
+            display: none;
+            margin-top: 15px;
+            background: #fafafa;
+            border: 1px solid #ccc;
+            padding: 12px;
+            border-radius: 4px;
+            max-height: 250px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .sync-results h4 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
             color: #333;
         }
 
-        a {
-            color: #00e;
-            text-decoration: none;
-            margin-right: 4px;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-        /* Modal Overlay for Add/Edit Form */
-        .modal-overlay {
+        /* Dropdown style */
+        .parent-dropdown {
             display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.3);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
             background: #fff;
-            padding: 15px;
             border: 1px solid #999;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            width: 480px;
-            max-height: 85vh;
-            overflow-y: auto;
+            max-height: none;
+            overflow-y: visible;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-radius: 4px;
         }
-        .modal input[type="text"] {
-            width: 100%;
-            padding: 5px;
-            margin-top: 3px;
-            margin-bottom: 6px;
-            font-size: 13px;
-            box-sizing: border-box;
-        }
-        .link-row-input {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 8px;
-            align-items: center;
-            background: #f9f9f9;
-            padding: 6px;
-            border: 1px solid #e0e0e0;
-        }
-        .modal-buttons {
-            display: flex;
-            justify-content: flex-start;
-            gap: 5px;
-            margin-top: 10px;
-        }
-        /* Dynamic Existing Entries list inside Modal */
-        .modal-existing-list {
-            background: #fafafa;
-            border: 1px solid #ddd;
-            padding: 8px;
-            max-height: 140px;
-            overflow-y: auto;
-            margin-bottom: 12px;
-        }
-        .modal-list-item {
-            font-size: 12px;
-            padding: 4px 6px;
-            margin: 2px 0;
-            background: #fff;
-            border: 1px solid #e5e5e5;
+        .dropdown-item {
+            padding: 10px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            color: #333;
             display: flex;
             justify-content: space-between;
             align-items: center;
+        }
+        .dropdown-item:hover {
+            background: #e3f2fd;
+            color: #0d47a1;
+        }
+        .dropdown-item:last-child {
+            border-bottom: none;
         }
     </style>
 </head>
 <body>
 
-    <h1>News</h1>
+    <h1>News Manager[cite: 1]</h1>
 
     <!-- Top Action Toolbar -->
     <div class="top-toolbar">
-        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <strong>Actions:</strong>
-            <button onclick="openAddModal()" title="Add">➕</button>
-            <button onclick="openEditModal()" title="Edit">✏️</button>
-            <button onclick="deleteSelected()" title="Delete" style="color: red;">🗑️</button>
-            <span style="border-left: 1px solid #ccc; height: 20px; margin: 0 5px;"></span>
-            <button onclick="exportBackup()" title="Export Backup">💾</button>
-            <button onclick="triggerImport()" title="Import Backup">📂</button>
-            <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importBackup(event)">
-            <span id="selection-indicator" style="font-size: 12px; color: #555; margin-left: auto;">No line selected</span>
-        </div>
-        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border-top: 1px solid #ddd; padding-top: 8px;">
-            <input type="text" id="searchInput" placeholder="Search all levels..." oninput="handleSearch()">
-            <button onclick="expandAll()" title="Expand All">⤢</button>
-            <button onclick="collapseAll()" title="Collapse All">⤡</button>
-        </div>
+        <strong>Actions:</strong>
+        <button onclick="exportAsTextFile()" title="Export Text Area as File">💾 Export</button>
+        <button class="primary" onclick="document.getElementById('duplicatesFileInput').click()" title="Find Duplicate Words from Selected File">🔄 Duplicates</button>
+        <span id="status-msg" style="font-size: 12px; color: #2e7d32; margin-left: auto;">Ready</span>
     </div>
 
-    <!-- News Container -->
-    <div id="notes-container"></div>
+    <!-- Hidden File Input for Duplicates -->
+    <input type="file" id="duplicatesFileInput" accept=".txt,.text" style="display: none;" onchange="handleDuplicatesFileSelected(event)">
 
-    <!-- Modal Form for Add / Edit -->
-    <div id="form-modal" class="modal-overlay">
-        <div class="modal">
-            <h3 id="modal-title" style="margin-top:0; font-size:16px;">Add News Item</h3>
-            
-            <label style="font-size: 12px;" id="modal-text-label">Text description:</label>
-            <input type="text" id="modal-text" placeholder="Enter news text..." oninput="handleModalTextInput()">
-            
-            <!-- Dynamic Existing Entries Section (Visible only when typing in Add mode) -->
-            <div id="modal-existing-section" style="display: none;">
-                <label style="font-size: 12px; font-weight: bold; color: #333;">Matching Existing Entries (Click Edit to modify):</label>
-                <div id="modal-existing-container" class="modal-existing-list">
-                    <!-- Populated dynamically as user types -->
-                </div>
-                <hr style="border:0; border-top:1px solid #eee; margin: 10px 0;">
+    <!-- Single Text Area Workspace -->
+    <div class="workspace">
+        <div class="pane">
+            <h3 id="paneTitle">Active Content Area[cite: 1]</h3>
+            <div class="textarea-wrapper">
+                <textarea id="mainTextarea" placeholder="Click here or on an empty line to select a parent..." onclick="handleTextareaClick()" oninput="handleTextareaInput()"></textarea>
+                <div id="parentDropdown" class="parent-dropdown"></div>
             </div>
-
-            <label style="font-size: 12px; display: block; margin-top: 8px;">Hyperlinks (Title & URL):</label>
-            <div id="links-container" style="margin-bottom: 5px;">
-                <!-- Dynamic link input rows go here -->
-            </div>
-            <button type="button" onclick="addLinkInputRow('', '')" style="font-size: 11px; margin-bottom: 10px;">+ Add Link</button>
-
-            <div class="modal-buttons">
-                <button onclick="closeModal()">Cancel</button>
-                <button onclick="submitModalForm()" style="background: #d2e3fc;" id="modal-submit-btn">Save</button>
-            </div>
+            <!-- Duplicates Results Output Container -->
+            <div id="syncResultsContainer" class="sync-results"></div>
         </div>
     </div>
 
     <script>
-        // Distinct storage keys for News
-        let collapsedMap = JSON.parse(localStorage.getItem('ai_news_collapsed')) || {};
+        let parentData = [
+            { title: "AaaNumbers", content: "AaaNumbers" },
+            { title: "Alcohol and Drugs", content: "Alcohol and Drugs" },
+            { title: "Art", content: "Art" },
+            { title: "B", content: "B" },
+            { title: "C", content: "C" },
+            { title: "Energy", content: "Energy" },
+            { title: "Environment", content: "Environment" },
+            { title: "Finance and Economics", content: "Finance and Economics" },
+            { title: "Government", content: "Government" },
+            { title: "Health", content: "Health" },
+            { title: "Industries", content: "Industries" },
+            { title: "Law and Order", content: "Law and Order" },
+            { title: "Religion", content: "Religion" },
+            { title: "Transportation", content: "Transportation" }
+        ];
 
-        function sortRootTree() {
-            if (Array.isArray(notesTree)) {
-                notesTree.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
-            }
-        }
-
-        function loadAndCleanStorage() {
-            try {
-                let raw = JSON.parse(localStorage.getItem('ai_news_tree'));
-                if (!Array.isArray(raw)) return [];
-                
-                function sanitize(nodes) {
-                    return nodes.filter(n => n && typeof n === 'object').map(n => {
-                        let linksArr = [];
-                        if (Array.isArray(n.links)) {
-                            linksArr = n.links.map(l => {
-                                if (typeof l === 'string') {
-                                    return { title: l, url: l };
-                                }
-                                if (l && typeof l === 'object') {
-                                    return {
-                                        title: typeof l.title === 'string' && l.title.trim() !== '' ? l.title : (l.url || 'Link'),
-                                        url: typeof l.url === 'string' ? l.url : ''
-                                    };
-                                }
-                                return null;
-                            }).filter(l => l && l.url);
-                        } else if (typeof n.url === 'string' && n.url.trim() !== '') {
-                            linksArr = [{ title: n.text || 'Link', url: n.url.trim() }];
-                        }
-
-                        return {
-                            text: typeof n.text === 'string' ? n.text : '',
-                            links: linksArr,
-                            children: Array.isArray(n.children) ? sanitize(n.children) : []
-                        };
-                    });
+        window.onload = function() {
+            const savedContent = localStorage.getItem('news_manager_content');
+            if (savedContent !== null) {
+                document.getElementById('mainTextarea').value = savedContent;
+                if (savedContent.trim() !== '') {
+                    document.getElementById('paneTitle').textContent = `Active Content Area (Loaded from Storage)`;
                 }
-                let sanitized = sanitize(raw);
-                sanitized.sort((a, b) => (a.text || '').localeCompare(b.text || ''));
-                return sanitized;
-            } catch (e) {
-                return [];
+                setStatus("Loaded saved content from local storage.", "#2e7d32");
+            } else {
+                setStatus("Ready. Click the text area or an empty line to select a parent.", "#2e7d32");
             }
-        }
 
-        let notesTree = loadAndCleanStorage();
-        let selectedPathStr = null; 
-        let activeActionPathStr = null;
-        let modalMode = 'add'; 
-        let searchQuery = '';
-        const MAX_LEVEL = 6; // Allows up to 6 levels (0 to 5)[cite: 1]
-
-        function saveToStorage() {
-            sortRootTree();
-            localStorage.setItem('ai_news_tree', JSON.stringify(notesTree));
-            localStorage.setItem('ai_news_tree_backup', JSON.stringify(notesTree));
-            localStorage.setItem('ai_news_collapsed', JSON.stringify(collapsedMap));
-        }
-
-        // Global click listener to deselect when clicking outside rows/toolbar/modal[cite: 1]
-        document.addEventListener('click', (e) => {
-            const rowTarget = e.target.closest('.item-row');
-            const modalTarget = e.target.closest('.modal');
-            const toolbarTarget = e.target.closest('.top-toolbar');
-            
-            if (!rowTarget && !toolbarTarget && !modalTarget) {
-                deselectAll();
-            }
-        });
-
-        function deselectAll() {
-            selectedPathStr = null;
-            document.querySelectorAll('.item-row').forEach(row => row.classList.remove('selected'));
-            updateSelectionIndicator();
-        }
-
-        function handleSearch() {
-            searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
-            renderNotes();
-        }
-
-        // --- EXPAND / COLLAPSE ALL HELPERS ---[cite: 1]
-        function collectAllParentPaths(nodes, path = [], map = {}) {
-            nodes.forEach((node, idx) => {
-                if (node && Array.isArray(node.children) && node.children.length > 0) {
-                    const currentPath = [...path, idx].join('-');
-                    map[currentPath] = true;
-                    collectAllParentPaths(node.children, [...path, idx], map);
+            document.addEventListener('click', function(event) {
+                const wrapper = document.querySelector('.textarea-wrapper');
+                if (wrapper && !wrapper.contains(event.target)) {
+                    hideDropdown();
                 }
             });
-            return map;
-        }
 
-        function expandAll() {
-            collapsedMap = {}; 
-            saveToStorage();
-            renderNotes();
-        }
-
-        function collapseAll() {
-            collapsedMap = collectAllParentPaths(notesTree);
-            saveToStorage();
-            renderNotes();
-        }
-
-        function nodeMatchesQuery(item, query) {
-            if (!query) return false;
-            if (item.text.toLowerCase().includes(query)) return true;
-            if (Array.isArray(item.links)) {
-                for (let l of item.links) {
-                    if ((l.title && l.title.toLowerCase().includes(query)) || (l.url && l.url.toLowerCase().includes(query))) {
-                        return true;
-                    }
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    hideDropdown();
                 }
-            }
-            return false;
+            });
+        };
+
+        function setStatus(msg, color) {
+            const statusEl = document.getElementById('status-msg');
+            statusEl.textContent = msg;
+            statusEl.style.color = color;
         }
 
-        function treeContainsMatch(item, query) {
-            if (!query) return true;
-            if (nodeMatchesQuery(item, query)) return true;
-            if (Array.isArray(item.children)) {
-                for (let child of item.children) {
-                    if (treeContainsMatch(child, query)) return true;
-                }
-            }
-            return false;
-        }
+        function handleTextareaClick() {
+            const textarea = document.getElementById('mainTextarea');
+            const val = textarea.value;
 
-        function renderNotes() {
-            const container = document.getElementById('notes-container');
-            container.innerHTML = '';
-
-            if (notesTree.length === 0) {
-                container.innerHTML = '<div style="color: #666; font-size: 13px; padding: 10px;">No news items yet. Click "Add" above to create one.[cite: 1]</div>';
-                selectedPathStr = null;
-                updateSelectionIndicator();
+            if (val.trim() === '') {
+                showDropdown();
                 return;
             }
 
-            let hasAnyVisible = false;
-            notesTree.forEach((item, index) => {
-                if (item && (!searchQuery || treeContainsMatch(item, searchQuery))) {
-                    hasAnyVisible = true;
-                    renderItem(item, index, [index], 0, container, false);
-                }
-            });
-
-            if (!hasAnyVisible && searchQuery) {
-                container.innerHTML = `<div style="color: #666; font-size: 13px; padding: 10px;">No matches found for "${searchQuery}".</div>`;
-            }
-        }
-
-        function renderItem(item, index, path, level, container, isParentCollapsed) {
-            if (!item) return;
-            const pathStr = path.join('-');
+            const cursorPosition = textarea.selectionStart;
+            const textBeforeCursor = val.substring(0, cursorPosition);
+            const linesBefore = textBeforeCursor.split('\n');
+            const currentLineIndex = linesBefore.length - 1;
             
-            if (isParentCollapsed) return;
-            if (searchQuery && !treeContainsMatch(item, searchQuery)) return;
+            const allLines = val.split('\n');
+            const clickedLineText = allLines[currentLineIndex] || '';
 
-            const div = document.createElement('div');
-            const cssLevel = Math.min(level, MAX_LEVEL);
-            const isMatch = searchQuery ? nodeMatchesQuery(item, searchQuery) : false;
-            
-            div.className = `item-row level-${cssLevel} ${selectedPathStr === pathStr ? 'selected' : ''} ${isMatch ? 'search-match' : ''}`;
-            div.setAttribute('data-path', pathStr);
-
-            div.onclick = () => {
-                selectItem(pathStr);
-            };
-
-            const text = item.text || '';
-            const links = Array.isArray(item.links) ? item.links : [];
-
-            let prefixHTML = '';
-            const hasChildren = item.children && Array.isArray(item.children) && item.children.length > 0;
-            
-            if (hasChildren) {
-                const isCollapsed = searchQuery ? false : !!collapsedMap[pathStr];
-                prefixHTML = `<button class="collapse-btn" onclick="toggleCollapse(event, '${pathStr}')">${isCollapsed ? '[+]' : '[-]'}</button>`;
+            if (clickedLineText.trim() === '') {
+                showDropdown();
             } else {
-                prefixHTML = `<span style="display:inline-block; width:16px;"></span>`;
-            }
-
-            let textSpan = `<span style="font-weight:inherit;">${text}</span>`;
-            
-            let linksHTML = '';
-            if (links.length > 0) {
-                links.forEach((lnk) => {
-                    const title = lnk.title || lnk.url;
-                    linksHTML += ` <a href="${lnk.url}" target="_blank" onclick="event.stopPropagation()">[${title}]</a>`;
-                });
-            }
-
-            div.innerHTML = prefixHTML + textSpan + linksHTML;
-            container.appendChild(div);
-
-            const currentCollapsed = searchQuery ? false : !!collapsedMap[pathStr];
-            if (hasChildren) {
-                item.children.forEach((child, childIndex) => {
-                    if (child) renderItem(child, childIndex, [...path, childIndex], level + 1, container, currentCollapsed);
-                });
+                hideDropdown();
             }
         }
 
-        function toggleCollapse(event, pathStr) {
-            event.stopPropagation();
-            if (searchQuery) return; 
-            collapsedMap[pathStr] = !collapsedMap[pathStr];
-            saveToStorage();
-            renderNotes();
+        function handleTextareaInput() {
+            const textarea = document.getElementById('mainTextarea');
+            localStorage.setItem('news_manager_content', textarea.value);
+            setStatus("Changes saved to local storage.", "#2e7d32");
         }
 
-        function selectItem(pathStr) {
-            selectedPathStr = pathStr;
-            document.querySelectorAll('.item-row').forEach(row => {
-                if (row.getAttribute('data-path') === pathStr) {
-                    row.classList.add('selected');
+        function showDropdown() {
+            const dropdown = document.getElementById('parentDropdown');
+            dropdown.innerHTML = '';
+
+            if (parentData.length === 0) {
+                dropdown.innerHTML = `<div class="dropdown-item" style="color: #666; font-style: italic;">No parents available in array.</div>`;
+            } else {
+                parentData.forEach((item, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'dropdown-item';
+                    div.innerHTML = `<span>🗂️ ${item.title}</span>`;
+
+                    div.onclick = function(e) {
+                        e.stopPropagation();
+                        appendParent(index);
+                        hideDropdown();
+                    };
+                    dropdown.appendChild(div);
+                });
+            }
+
+            dropdown.style.display = 'block';
+        }
+
+        function hideDropdown() {
+            const dropdown = document.getElementById('parentDropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        }
+
+        function appendParent(index) {
+            if (parentData[index]) {
+                const textarea = document.getElementById('mainTextarea');
+                let parentTitle = parentData[index].title;
+                let currentVal = textarea.value.trim();
+
+                let newEntry = parentData[index].content || parentTitle;
+                newEntry += '\n-';
+
+                if (currentVal !== '') {
+                    textarea.value = currentVal + '\n\n' + newEntry;
                 } else {
-                    row.classList.remove('selected');
+                    textarea.value = newEntry;
                 }
-            });
-            updateSelectionIndicator();
-        }
 
-        function updateSelectionIndicator() {
-            const indicator = document.getElementById('selection-indicator');
-            if (selectedPathStr) {
-                indicator.textContent = `Selected: Line [${selectedPathStr}]`;
-            } else {
-                indicator.textContent = `No line selected`;
+                localStorage.setItem('news_manager_content', textarea.value);
+
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+                document.getElementById('paneTitle').textContent = `Active Content Area`;
+                setStatus(`Appended parent: ${parentTitle}`, "#2e7d32");
             }
         }
 
-        function getItemByPath(pathArr) {
-            let current = notesTree;
-            for (let i = 0; i < pathArr.length - 1; i++) {
-                current = current[pathArr[i]].children;
+        // Handler to export text area contents as a file
+        function exportAsTextFile() {
+            let currentContent = document.getElementById('mainTextarea').value;
+            if (!currentContent.trim()) {
+                alert("The text area is empty. Nothing to export.");
+                return;
             }
-            return current[pathArr[pathArr.length - 1]];
+            downloadBlob(currentContent, "news_manager_export.txt");
+            setStatus("Successfully exported content as text file.", "#2e7d32");
         }
 
-        function getParentContainerByPath(pathArr) {
-            if (pathArr.length === 1) return notesTree;
-            let current = notesTree;
-            for (let i = 0; i < pathArr.length - 2; i++) {
-                current = current[pathArr[i]].children;
-            }
-            return current[pathArr[pathArr.length - 2]].children;
-        }
-
-        // --- BACKUP & RECOVERY FUNCTIONS ---[cite: 1]
-        function exportBackup() {
-            const exportData = {
-                tree: notesTree,
-                collapsed: collapsedMap
-            };
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-            const downloadAnchor = document.createElement('a');
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `ai_news_backup_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(downloadAnchor);
-            downloadAnchor.click();
-            downloadAnchor.remove();
-        }
-
-        function triggerImport() {
-            document.getElementById('importFile').click();
-        }
-
-        function importBackup(event) {
-            const file = event.target.files[0];
+        // Handler for Duplicates button file selection
+        function handleDuplicatesFileSelected(e) {
+            const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    let rawTree = Array.isArray(imported) ? imported : imported.tree;
-                    if (Array.isArray(rawTree)) {
-                        notesTree = rawTree;
-                        sortRootTree();
-                        if (imported.collapsed && typeof imported.collapsed === 'object') {
-                            collapsedMap = imported.collapsed;
-                        }
-                        saveToStorage();
-                        renderNotes();
-                        alert('News backup successfully restored!');
-                    } else {
-                        alert('Invalid backup file format.');
-                    }
-                } catch (err) {
-                    alert('Error reading backup file.');
-                }
+            reader.onload = function(event) {
+                const fileContent = event.target.result;
+                processAndDisplayDuplicates(fileContent, file.name);
             };
             reader.readAsText(file);
-            event.target.value = ''; 
+            
+            e.target.value = '';
         }
 
-        // --- DYNAMIC FILTERING AS USER TYPES IN ADD MODE ---
-        function handleModalTextInput() {
-            if (modalMode !== 'add') return;
-
-            const query = document.getElementById('modal-text').value.trim().toLowerCase();
-            const section = document.getElementById('modal-existing-section');
-            const container = document.getElementById('modal-existing-container');
-
-            if (query === '') {
-                section.style.display = 'none';
-                container.innerHTML = '';
+        function processAndDisplayDuplicates(text, filename) {
+            const resultsContainer = document.getElementById('syncResultsContainer');
+            
+            if (!text.trim()) {
+                resultsContainer.style.display = 'block';
+                resultsContainer.innerHTML = `<h4>Duplicates Results (${filename})</h4><p style="color: #666;">The selected file is empty.</p>`;
+                setStatus(`File ${filename} is empty.`, "#c62828");
                 return;
             }
 
-            section.style.display = 'block';
-            container.innerHTML = '';
+            // Common stop words to ignore during counting
+            const stopwords = new Set([
+                'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and', 'any', 'are', 'aren\'t', 'as', 'at', 'be', 'because', 'been', 'before', 'being', 'below', 'between', 'both', 'but', 'by', 'can\'t', 'cannot', 'could', 'couldn\'t', 'did', 'didn\'t', 'do', 'does', 'doesn\'t', 'doing', 'don\'t', 'down', 'during', 'each', 'few', 'for', 'from', 'further', 'had', 'hadn\'t', 'has', 'hasn\'t', 'have', 'haven\'t', 'having', 'he', 'he\'d', 'he\'ll', 'he\'s', 'her', 'here', 'here\'s', 'hers', 'herself', 'him', 'himself', 'his', 'how', 'how\'s', 'i', 'i\'d', 'i\'ll', 'i\'m', 'i\'ve', 'if', 'in', 'into', 'is', 'isn\'t', 'it', 'it\'s', 'its', 'itself', 'let\'s', 'me', 'more', 'most', 'mustn\'t', 'my', 'myself', 'no', 'nor', 'not', 'of', 'off', 'on', 'once', 'only', 'or', 'other', 'ought', 'our', 'ours', 'ourselves', 'out', 'over', 'own', 'same', 'shan\'t', 'she', 'she\'d', 'she\'ll', 'she\'s', 'should', 'shouldn\'t', 'so', 'some', 'such', 'than', 'that', 'that\'s', 'the', 'their', 'theirs', 'them', 'themselves', 'then', 'there', 'there\'s', 'these', 'they', 'they\'d', 'they\'ll', 'they\'re', 'they\'ve', 'this', 'those', 'through', 'to', 'too', 'under', 'until', 'up', 'very', 'was', 'wasn\'t', 'we', 'we\'d', 'we\'ll', 'we\'re', 'we\'ve', 'were', 'weren\'t', 'what', 'what\'s', 'when', 'when\'s', 'where', 'where\'s', 'which', 'while', 'who', 'who\'s', 'whom', 'why', 'why\'s', 'with', 'won\'t', 'would', 'wouldn\'t', 'you', 'you\'d', 'you\'ll', 'you\'re', 'you\'ve', 'your', 'yours', 'yourself', 'yourselves'
+            ]);
 
-            let matchFound = false;
+            const lines = text.split(/\r?\n/);
+            const wordMap = {};
 
-            function traverseAndAppendFiltered(nodes, path = []) {
-                nodes.forEach((node, idx) => {
-                    if (!node) return;
-                    const currentPath = [...path, idx];
-                    const pathStr = currentPath.join('-');
-                    
-                    const matches = node.text.toLowerCase().includes(query);
-                    if (matches) {
-                        matchFound = true;
-                        const indent = path.length * 15;
-                        const itemDiv = document.createElement('div');
-                        itemDiv.className = 'modal-list-item';
-                        itemDiv.style.marginLeft = `${indent}px`;
-                        itemDiv.innerHTML = `
-                            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:320px;" title="${node.text}">
-                                <strong>[${pathStr}]</strong> ${node.text}
-                            </span>
-                            <button type="button" onclick="switchToEditFromModal('${pathStr}')" style="font-size:11px; padding:2px 6px; cursor:pointer; background:#e0e0e0; border:1px solid #999;">Edit</button>
-                        `;
-                        container.appendChild(itemDiv);
+            lines.forEach((line, lineIndex) => {
+                const lineNumber = lineIndex + 1;
+                const regex = /\b[a-zA-ZÀ-ÿ0-9_]+\b/g;
+                let match;
+                while ((match = regex.exec(line)) !== null) {
+                    const rawWord = match[0];
+                    const wordLower = rawWord.toLowerCase();
+
+                    if (stopwords.has(wordLower)) {
+                        continue;
                     }
 
-                    if (Array.isArray(node.children) && node.children.length > 0) {
-                        traverseAndAppendFiltered(node.children, currentPath);
+                    const charPosition = match.index + 1;
+
+                    if (!wordMap[wordLower]) {
+                        wordMap[wordLower] = {
+                            originalWord: rawWord,
+                            occurrences: []
+                        };
                     }
-                });
-            }
-
-            traverseAndAppendFiltered(notesTree);
-
-            if (!matchFound) {
-                container.innerHTML = '<div style="color: #777; font-size: 11px; padding: 4px;">No matching entries found.</div>';
-            }
-        }
-
-        // Switch from Add view to Edit view for a specific item dynamically inside the modal
-        function switchToEditFromModal(pathStr) {
-            modalMode = 'edit';
-            activeActionPathStr = pathStr;
-            document.getElementById('modal-title').textContent = `Edit News Item [${pathStr}]`;
-            document.getElementById('modal-existing-section').style.display = 'none'; // Hide list during active editing
-
-            const pathArr = pathStr.split('-').map(Number);
-            const item = getItemByPath(pathArr);
-            if (item) {
-                document.getElementById('modal-text').value = item.text || '';
-                const linksContainer = document.getElementById('links-container');
-                linksContainer.innerHTML = '';
-
-                const existingLinks = Array.isArray(item.links) ? item.links : [];
-                if (existingLinks.length > 0) {
-                    existingLinks.forEach(lnk => addLinkInputRow(lnk.title || '', lnk.url || ''));
-                } else {
-                    addLinkInputRow('', '');
-                }
-            }
-        }
-
-        // --- MODAL HANDLERS FOR MULTI-LINK WITH TITLES ---[cite: 1]
-        function addLinkInputRow(titleVal = '', urlVal = '') {
-            const container = document.getElementById('links-container');
-            const rowDiv = document.createElement('div');
-            rowDiv.className = 'link-row-input';
-            rowDiv.innerHTML = `
-                <div style="flex:1;">
-                    <label style="font-size:10px; color:#555;">Title:</label>
-                    <input type="text" class="modal-link-title" value="${titleVal}" placeholder="e.g., TechCrunch Article" style="margin:0;">
-                </div>
-                <div style="flex:1.5;">
-                    <label style="font-size:10px; color:#555;">URL:</label>
-                    <input type="text" class="modal-link-url" value="${urlVal}" placeholder="https://..." style="margin:0;">
-                </div>
-                <button type="button" onclick="this.parentElement.remove()" style="font-size:11px; color:red; padding:4px 6px; margin-top:14px;">✕</button>
-            `;
-            container.appendChild(rowDiv);
-        }
-
-        function openAddModal() {
-            modalMode = 'add';
-            activeActionPathStr = selectedPathStr; 
-            document.getElementById('modal-title').textContent = activeActionPathStr ? 'Add Sub-news Item' : 'Add Main News Item';
-            document.getElementById('modal-existing-section').style.display = 'none'; // Hidden initially until typing
-            document.getElementById('modal-text').value = '';
-            document.getElementById('links-container').innerHTML = '';
-            
-            if (activeActionPathStr) {
-                const pathArr = activeActionPathStr.split('-').map(Number);
-                if (pathArr.length >= MAX_LEVEL) {
-                    alert(`Maximum nesting depth reached. Cannot add deeper sub-lines here.[cite: 1]`);
-                    return;
-                }
-            }
-
-            addLinkInputRow('', '');
-            document.getElementById('form-modal').style.display = 'flex';
-        }
-
-        function openEditModal() {
-            if (!selectedPathStr) {
-                alert('Please select a line first to edit.');
-                return;
-            }
-            modalMode = 'edit';
-            activeActionPathStr = selectedPathStr; 
-            document.getElementById('modal-title').textContent = `Edit News Item [${selectedPathStr}]`;
-            document.getElementById('modal-existing-section').style.display = 'none'; // Hidden in edit mode
-            
-            const pathArr = activeActionPathStr.split('-').map(Number);
-            const item = getItemByPath(pathArr);
-            if (item) {
-                document.getElementById('modal-text').value = item.text || '';
-                const linksContainer = document.getElementById('links-container');
-                linksContainer.innerHTML = '';
-
-                const existingLinks = Array.isArray(item.links) ? item.links : [];
-                if (existingLinks.length > 0) {
-                    existingLinks.forEach(lnk => addLinkInputRow(lnk.title || '', lnk.url || ''));
-                } else {
-                    addLinkInputRow('', '');
-                }
-
-                document.getElementById('form-modal').style.display = 'flex';
-            } else {
-                alert('Selected line could not be found.');
-            }
-        }
-
-        function closeModal() {
-            document.getElementById('form-modal').style.display = 'none';
-            activeActionPathStr = null;
-        }
-
-        function submitModalForm() {
-            const text = document.getElementById('modal-text').value.trim();
-            if (!text) {
-                alert('Text cannot be empty.');
-                return;
-            }
-
-            const titleInputs = document.querySelectorAll('.modal-link-title');
-            const urlInputs = document.querySelectorAll('.modal-link-url');
-            let links = [];
-
-            for (let i = 0; i < urlInputs.length; i++) {
-                const urlVal = urlInputs[i].value.trim();
-                const titleVal = titleInputs[i].value.trim();
-                if (urlVal !== '') {
-                    links.push({
-                        title: titleVal !== '' ? titleVal : urlVal,
-                        url: urlVal
+                    wordMap[wordLower].occurrences.push({
+                        line: lineNumber,
+                        col: charPosition
                     });
                 }
-            }
+            });
 
-            if (modalMode === 'add') {
-                if (!activeActionPathStr) {
-                    notesTree.push({ text: text, links: links, children: [] });
-                } else {
-                    const pathArr = activeActionPathStr.split('-').map(Number);
-                    const parentItem = getItemByPath(pathArr);
-                    if (!parentItem.children) parentItem.children = [];
-                    parentItem.children.push({ text: text, links: links, children: [] });
-                }
-            } else if (modalMode === 'edit') {
-                if (!activeActionPathStr) {
-                    alert('No line selected for editing.');
-                    return;
-                }
-                const pathArr = activeActionPathStr.split('-').map(Number);
-                const item = getItemByPath(pathArr);
-                if (item) {
-                    item.text = text;
-                    item.links = links;
-                }
-            }
+            const duplicates = Object.values(wordMap).filter(item => item.occurrences.length > 1);
 
-            saveToStorage();
-            closeModal();
-            renderNotes();
-        }
+            resultsContainer.style.display = 'block';
 
-        // --- DELETE SELECTED ---[cite: 1]
-        function deleteSelected() {
-            if (!selectedPathStr) {
-                alert('Please select a line to delete.');
+            if (duplicates.length === 0) {
+                resultsContainer.innerHTML = `<h4>Duplicates Results (${filename})</h4><p style="color: #2e7d32;">No duplicate words found (ignoring common stop words)!</p>`;
+                setStatus(`Checked ${filename}: No duplicate words found.`, "#2e7d32");
                 return;
             }
-            if (!confirm('Are you sure you want to delete this line and all its sub-lines?')) return;
 
-            const pathArr = selectedPathStr.split('-').map(Number);
-            if (pathArr.length === 1) {
-                notesTree.splice(pathArr[0], 1);
-            } else {
-                const parentArr = getParentContainerByPath(pathArr);
-                parentArr.splice(pathArr[pathArr.length - 1], 1);
-            }
+            let html = `<h4>Duplicates Results (${filename}): Found ${duplicates.length} duplicate word(s)</h4>`;
+            html += '<ul style="margin: 0; padding-left: 20px;">';
+            duplicates.forEach(item => {
+                const locations = item.occurrences.map(occ => `Line ${occ.line}, Col ${occ.col}`).join(' | ');
+                html += `<li style="margin-bottom: 4px;"><strong>${item.originalWord}</strong> (${item.occurrences.length} times) &rarr; <span style="color: #555;">${locations}</span></li>`;
+            });
+            html += '</ul>';
 
-            selectedPathStr = null;
-            saveToStorage();
-            renderNotes();
+            resultsContainer.innerHTML = html;
+            setStatus(`Duplicates analyzed for ${filename}: ${duplicates.length} found.`, "#2e7d32");
         }
 
-        // Initial Load
-        renderNotes();
+        function downloadBlob(text, filename) {
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = filename;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+        }
     </script>
-
 </body>
 </html>

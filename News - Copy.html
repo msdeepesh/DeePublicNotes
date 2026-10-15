@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>News Manager</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f5f5f5;
+            color: #000;
+            margin: 30px;
+        }
+        h1 {
+            font-size: 28px;
+            color: #00e;
+            font-family: "Times New Roman", Times, serif;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        .top-toolbar {
+            background: #eef2f5;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .top-toolbar button {
+            font-size: 14px;
+            cursor: pointer;
+            background: #e0e0e0;
+            border: 1px solid #999;
+            padding: 4px 10px;
+        }
+        .top-toolbar button:hover {
+            background: #d0d0d0;
+        }
+
+        /* Top Match Display Bar */
+        #topMatchContainer {
+            background: #fffde7;
+            border: 1px solid #fbc02d;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            display: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        #topMatchContainer h4 {
+            margin: 0 0 5px 0;
+            font-size: 14px;
+            color: #f57f17;
+        }
+        .match-list-item {
+            font-size: 13px;
+            padding: 6px 10px;
+            margin: 4px 0;
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 3px;
+        }
+        .match-list-item:hover {
+            background: #e3f2fd;
+            border-color: #90caf9;
+        }
+        .match-list-item.parent-level {
+            background: #ffebee;
+            border-left: 4px solid #c62828;
+            color: #c62828;
+        }
+        
+        /* Vertical Stacked Card Deck Container */
+        #editorsContainer {
+            position: relative;
+            margin-top: 20px;
+            margin-bottom: 60px;
+        }
+
+        /* Individual Vertical Stacked Card Panel */
+        .panel {
+            background: #fff;
+            border: 1px solid #bbb;
+            padding: 6px;
+            margin-bottom: -15px; /* Overlaps vertically to form a stacked deck look */
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            position: relative;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+            border-radius: 4px;
+            display: inline-block; /* Wraps width to title text */
+        }
+
+        /* Collapsed state: hide text area and error box, showing only title header */
+        .panel textarea,
+        .panel .error-box {
+            display: none;
+        }
+
+        /* Hover effect on stacked cards */
+        .panel:hover {
+            background: #fcfcfc;
+            border-color: #777;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+            z-index: 1000 !important;
+        }
+
+        /* Maximized / Zoomed Card State (Expands to screen like a modal) */
+        .panel.maximized {
+            position: fixed !important;
+            top: 40px !important;
+            left: 40px !important;
+            right: 40px !important;
+            bottom: 40px !important;
+            width: auto !important;
+            height: auto !important;
+            transform: none !important;
+            margin-bottom: 0 !important;
+            z-index: 1500 !important;
+            display: flex;
+            flex-direction: column;
+            padding: 15px !important;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.4);
+            background: #fff;
+            cursor: default;
+        }
+        .panel.maximized textarea,
+        .panel.maximized .error-box {
+            display: block;
+        }
+        .panel.maximized textarea {
+            flex: 1;
+            width: 100% !important;
+            min-height: calc(100vh - 160px) !important;
+            overflow-y: auto !important;
+            white-space: pre-wrap !important;
+            resize: none;
+            font-family: monospace;
+            font-size: 13px;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+        }
+
+        /* Backdrop overlay when maximized */
+        .editor-backdrop {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 1400;
+        }
+        .editor-backdrop.active {
+            display: block;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-left: 4px solid #c62828;
+            border-radius: 3px;
+            gap: 20px;
+        }
+        .panel-title {
+            font-size: 14px;
+            margin: 0;
+            font-weight: bold;
+            color: #c62828;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>News Manager[cite: 1]</h1>
+
+    <!-- Top Match Display Bar -->
+    <div id="topMatchContainer">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h4 id="topMatchTitle">Matching Items from Previous Line</h4>
+            <button onclick="hideTopMatch()" style="font-size: 11px; padding: 2px 5px; cursor: pointer;">✕ Close</button>
+        </div>
+        <div id="topMatchList" style="max-height: 150px; overflow-y: auto;"></div>
+    </div>
+
+    <!-- Top Action Toolbar -->
+    <div class="top-toolbar">
+        <strong>Actions:</strong>
+        <button onclick="document.getElementById('importFile').click()" title="Import Text File">📁 Import Text File</button>
+        <input type="file" id="importFile" style="display: none;" accept=".txt,.text" onchange="importTextFile(event)">
+        <button onclick="exportTextFile()" title="Export All Text Areas">💾 Export Text File</button>
+        <span style="border-left: 1px solid #ccc; height: 20px; margin: 0 5px;"></span>
+        <input type="text" id="searchInput" placeholder="Search hierarchy..." oninput="handleSearchInput()" style="padding: 5px 8px; width: 200px; font-size: 13px;">
+        <span id="status-msg" style="font-size: 12px; color: #2e7d32; margin-left: auto;">Ready</span>
+    </div>
+
+    <!-- Vertical Stacked Deck Container -->
+    <div id="editorsContainer"></div>
+
+    <!-- Backdrop overlay for maximized panels -->
+    <div id="editorBackdrop" class="editor-backdrop"></div>
+
+    <script>
+        let editors = []; 
+        let allItemsFlat = [];
+        let nextEditorId = 1;
+
+        // Stop words list covering Articles, Prepositions, Pronouns, Auxiliary & Linking Verbs, Conjunctions, Common Adverbs & Fillers
+        const stopWords = new Set([
+            // Articles
+            'a', 'an', 'the',
+            // Prepositions
+            'in', 'on', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'over', 'under', 'again', 'further', 'then', 'once',
+            // Pronouns
+            'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers', 'herself', 'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those', 'am', 'is', 'are', 'was', 'were',
+            // Auxiliary & Linking Verbs
+            'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'shall', 'should', 'will', 'would', 'may', 'might', 'must', 'can', 'could',
+            // Conjunctions
+            'and', 'but', 'or', 'nor', 'for', 'yet', 'so', 'although', 'because', 'since', 'unless', 'while', 'where', 'when', 'if', 'than',
+            // Common Adverbs & Fillers
+            'not', 'no', 'only', 'just', 'very', 'too', 'also', 'so', 'well', 'now', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'than', 'up', 'out', 'about', 'like', 'oh', 'ah', 'hey', 'um', 'uh'
+        ]);
+
+        window.onload = function() {
+            renderEditors();
+            setStatus("Ready. No text areas loaded.", "#2e7d32");
+
+            document.addEventListener('click', function(event) {
+                const maximizedPanel = document.querySelector('.panel.maximized');
+                if (maximizedPanel && !maximizedPanel.contains(event.target)) {
+                    maximizedPanel.classList.remove('maximized');
+                    document.getElementById('editorBackdrop').classList.remove('active');
+                }
+
+                if (!event.target.matches('textarea') && !event.target.closest('.panel')) {
+                    sortAllEditorsOnExternalClick();
+                }
+            });
+        };
+
+        function setStatus(msg, color) {
+            const statusEl = document.getElementById('status-msg');
+            statusEl.textContent = msg;
+            statusEl.style.color = color;
+        }
+
+        function removeTextArea(id, event) {
+            if (event) event.stopPropagation();
+            const ed = editors.find(e => e.id === id);
+            const title = ed ? ed.parentTitle : 'this text area';
+            if (confirm(`Are you sure you want to remove the text area "${title}"?`)) {
+                editors = editors.filter(e => e.id !== id);
+                renderEditors();
+                recalculateAllItems();
+                setStatus("Text area removed.", "#c62828");
+            }
+        }
+
+        function getParentTitle(rawText) {
+            const parsed = parseTextToTree(rawText);
+            if (parsed.rootNodes.length === 1) {
+                return parsed.rootNodes[0].text;
+            } else if (parsed.rootNodes.length > 1) {
+                return "[Multiple Parents]";
+            }
+            return "[Untitled Parent]";
+        }
+
+        function sortEditorsByTitle() {
+            editors.sort((a, b) => {
+                let titleA = a.parentTitle.toLowerCase();
+                let titleB = b.parentTitle.toLowerCase();
+                if (titleA.includes("untitled") || titleA.includes("multiple")) return 1;
+                if (titleB.includes("untitled") || titleB.includes("multiple")) return -1;
+                return titleA.localeCompare(titleB);
+            });
+        }
+
+        function renderEditors() {
+            const container = document.getElementById('editorsContainer');
+            container.innerHTML = '';
+
+            if (editors.length === 0) {
+                container.innerHTML = `<p style="color: #666; font-style: italic;">No text areas available. Import a text file to begin.</p>`;
+                return;
+            }
+
+            let maxTitleLength = 15;
+            editors.forEach(ed => {
+                if (ed.parentTitle && ed.parentTitle.length > maxTitleLength) {
+                    maxTitleLength = ed.parentTitle.length;
+                }
+            });
+
+            editors.forEach((ed, index) => {
+                const panel = document.createElement('div');
+                panel.className = 'panel';
+                panel.id = `panel_${ed.id}`;
+                panel.style.zIndex = index + 1;
+                panel.style.width = `calc(${maxTitleLength}ch + 50px)`;
+                panel.style.display = 'block';
+
+                panel.onclick = (e) => {
+                    if (!e.target.closest('button') && !e.target.closest('textarea')) {
+                        maximizePanel(ed.id);
+                    }
+                };
+
+                panel.innerHTML = `
+                    <div class="panel-header" onclick="maximizePanel(${ed.id})">
+                        <h3 class="panel-title">🗂️ ${ed.parentTitle}</h3>
+                        <button onclick="removeTextArea(${ed.id}, event)" style="font-size:11px; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; cursor:pointer; padding:2px 6px;">✕</button>
+                    </div>
+                    <textarea id="textarea_${ed.id}" placeholder="Enter text in format:
+Parent
+-Child
+--Grandchild" onfocus="maximizePanel(${ed.id})" oninput="handleTextareaInput(${ed.id})" onkeydown="handleTextareaKeyDown(event, ${ed.id})">${ed.content}</textarea>
+                    <div id="error_${ed.id}" class="error-box"></div>
+                `;
+                container.appendChild(panel);
+                processEditor(ed.id, ed.content);
+            });
+            recalculateAllItems();
+        }
+
+        function maximizePanel(edId) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('maximized'));
+            
+            const panel = document.getElementById(`panel_${edId}`);
+            if (panel) {
+                panel.classList.add('maximized');
+                document.getElementById('editorBackdrop').classList.add('active');
+                const ta = document.getElementById(`textarea_${edId}`);
+                if (ta) {
+                    ta.focus();
+                }
+            }
+        }
+
+        function importTextFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                splitAndLoadImportedText(content);
+                setStatus(`Successfully imported ${file.name}`, "#2e7d32");
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function splitAndLoadImportedText(fullText) {
+            const lines = fullText.split(/\r?\n/);
+            let parentChunks = [];
+            let currentChunkLines = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                let rawLine = lines[i];
+                let cleanLine = rawLine.replace(/\\-/g, '-');
+                if (!cleanLine.trim()) continue;
+
+                let match = cleanLine.match(/^(\s*)(-*)([\s]*)(.*)$/);
+                if (!match) continue;
+
+                let hyphenPart = match[2];
+                let depth = hyphenPart.length;
+
+                if (depth === 0) {
+                    if (currentChunkLines.length > 0) {
+                        parentChunks.push(currentChunkLines.join('\n'));
+                        currentChunkLines = [];
+                    }
+                }
+                currentChunkLines.push(rawLine);
+            }
+
+            if (currentChunkLines.length > 0) {
+                parentChunks.push(currentChunkLines.join('\n'));
+            }
+
+            if (parentChunks.length === 0 && fullText.trim() !== '') {
+                parentChunks.push(fullText);
+            }
+
+            parentChunks.forEach(chunk => {
+                if (chunk.trim() !== '') {
+                    const id = nextEditorId++;
+                    editors.push({ id: id, content: chunk, parentTitle: getParentTitle(chunk) });
+                }
+            });
+
+            sortEditorsByTitle();
+            renderEditors();
+        }
+
+        async function exportTextFile() {
+            syncAllEditorContents();
+            const combinedText = editors.map(ed => ed.content).join('\n\n');
+            
+            if ('window.showSaveFilePicker' in window || window.showSaveFilePicker) {
+                try {
+                    const options = {
+                        suggestedName: 'news_export.txt',
+                        types: [{
+                            description: 'Text Files',
+                            accept: { 'text/plain': ['.txt'] },
+                        }],
+                    };
+                    const handle = await window.showSaveFilePicker(options);
+                    const writableStream = await handle.createWritable();
+                    await writableStream.write(combinedText);
+                    await writableStream.close();
+                    setStatus("Successfully saved via dialog box.", "#2e7d32");
+                    return;
+                } catch (err) {
+                    if (err.name === 'AbortError') return;
+                }
+            }
+
+            const blob = new Blob([combinedText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = 'news_export.txt';
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+            setStatus("Exported news_export.txt successfully.", "#2e7d32");
+        }
+
+        function syncAllEditorContents() {
+            editors.forEach(ed => {
+                const ta = document.getElementById(`textarea_${ed.id}`);
+                if (ta) {
+                    ed.content = ta.value;
+                    ed.parentTitle = getParentTitle(ed.content);
+                }
+            });
+        }
+
+        function parseTextToTree(rawText) {
+            const lines = rawText.split(/\r?\n/);
+            let rootNodes = [];
+            let stack = [];
+            let validationErrors = [];
+            let flatList = [];
+            let previousDepth = 0;
+
+            for (let i = 0; i < lines.length; i++) {
+                let rawLine = lines[i];
+                let cleanLine = rawLine.replace(/\\-/g, '-');
+                if (!cleanLine.trim()) continue;
+
+                let match = cleanLine.match(/^(\s*)(-*)([\s]*)(.*)$/);
+                if (!match) continue;
+
+                let hyphenPart = match[2];
+                let contentText = match[4].trim();
+
+                if (!contentText) continue;
+
+                let depth = hyphenPart.length;
+
+                if (i > 0 && depth > previousDepth + 1) {
+                    validationErrors.push(`Line ${i + 1}: Invalid hyphen spacing. Depth jumped from level ${previousDepth} to level ${depth} ("${cleanLine.trim()}").`);
+                }
+                previousDepth = depth;
+
+                let node = { text: contentText, children: [], lineIndex: i, depth: depth, rawLine: cleanLine };
+                flatList.push(node);
+
+                while (stack.length > 0 && stack[stack.length - 1].depth >= depth) {
+                    stack.pop();
+                }
+
+                if (stack.length === 0) {
+                    rootNodes.push(node);
+                } else {
+                    stack[stack.length - 1].node.children.push(node);
+                }
+
+                stack.push({ depth: depth, node: node });
+            }
+
+            if (rootNodes.length > 1) {
+                validationErrors.push(`Validation Error: This text area contains ${rootNodes.length} parent items ("${rootNodes.map(n => n.text).join('", "')}"). Each text area can have only one parent!`);
+            }
+
+            return { rootNodes, validationErrors, flatList };
+        }
+
+        function processEditor(edId, rawText) {
+            const parsed = parseTextToTree(rawText);
+            const errorBox = document.getElementById(`error_${edId}`);
+            if (errorBox) {
+                if (parsed.validationErrors.length > 0) {
+                    errorBox.style.display = 'block';
+                    errorBox.textContent = parsed.validationErrors.join('\n');
+                } else {
+                    errorBox.style.display = 'none';
+                }
+            }
+            return parsed;
+        }
+
+        function recalculateAllItems() {
+            syncAllEditorContents();
+            allItemsFlat = [];
+            editors.forEach(ed => {
+                const parsed = parseTextToTree(ed.content);
+                parsed.flatList.forEach(item => {
+                    item.editorId = ed.id;
+                    item.parentTitle = ed.parentTitle;
+                    allItemsFlat.push(item);
+                });
+            });
+        }
+
+        function handleTextareaInput(edId) {
+            const textarea = document.getElementById(`textarea_${edId}`);
+            const val = textarea.value;
+            
+            const ed = editors.find(e => e.id === edId);
+            if (ed) {
+                ed.content = val;
+                ed.parentTitle = getParentTitle(val);
+                const headerTitle = textarea.parentElement.querySelector('.panel-title');
+                if (headerTitle) {
+                    headerTitle.textContent = `🗂️ ${ed.parentTitle}`;
+                }
+            }
+
+            processEditor(edId, val);
+            recalculateAllItems();
+        }
+
+        function handleTextareaKeyDown(event, edId) {
+            if (event.key === 'Enter') {
+                const textarea = document.getElementById(`textarea_${edId}`);
+                const val = textarea.value;
+                const cursorPosition = textarea.selectionStart;
+                const textBeforeCursor = val.substring(0, cursorPosition);
+                const lines = textBeforeCursor.split('\n');
+                
+                // Get the previous line typed (if we are on a new line or just hit enter, check the line right above)
+                let prevLineIndex = lines.length - 2;
+                if (prevLineIndex < 0) {
+                    hideTopMatch();
+                    return;
+                }
+
+                const allLines = val.split('\n');
+                const prevLineText = allLines[prevLineIndex] || '';
+
+                // Strip hyphens and clean up text
+                const match = prevLineText.replace(/\\-/g, '-').match(/^[\s\-]*([\s\S]*)$/);
+                const rawPrevContent = match ? match[1].trim() : '';
+
+                if (!rawPrevContent) {
+                    hideTopMatch();
+                    return;
+                }
+
+                // Filter out stop words (Articles, Prepositions, Pronouns, Auxiliary/Linking Verbs, Conjunctions, Adverbs & Fillers)
+                const tokens = rawPrevContent.toLowerCase().match(/\b[a-z0-9]+\b/g) || [];
+                const meaningfulWords = tokens.filter(word => !stopWords.has(word));
+
+                if (meaningfulWords.length === 0) {
+                    hideTopMatch();
+                    return;
+                }
+
+                // Match items containing all significant words of the previous line
+                const matches = allItemsFlat.filter(item => {
+                    // Exclude the exact same line itself
+                    if (item.editorId === edId && item.lineIndex === prevLineIndex) return false;
+                    const itemLower = item.text.toLowerCase();
+                    return meaningfulWords.every(word => itemLower.includes(word));
+                });
+
+                if (matches.length > 0) {
+                    showTopMatch(`Matches for previous line keywords: "${meaningfulWords.join(', ')}"`, matches);
+                } else {
+                    hideTopMatch();
+                }
+            }
+        }
+
+        function sortAllEditorsOnExternalClick() {
+            let changed = false;
+            editors.forEach(ed => {
+                const textarea = document.getElementById(`textarea_${ed.id}`);
+                if (!textarea) return;
+                const rawText = textarea.value;
+                const parsed = parseTextToTree(rawText);
+
+                if (parsed.validationErrors.length > 0) return;
+
+                let sortedLines = [];
+                function buildLinesRecursively(nodes) {
+                    nodes.sort((a, b) => a.text.localeCompare(b.text));
+                    nodes.forEach(node => {
+                        let hyphens = '-'.repeat(node.depth);
+                        sortedLines.push(`${hyphens}${node.text}`);
+                        if (node.children && node.children.length > 0) {
+                            buildLinesRecursively(node.children);
+                        }
+                    });
+                }
+
+                buildLinesRecursively(parsed.rootNodes);
+                const sortedText = sortedLines.join('\n');
+
+                if (textarea.value !== sortedText && sortedText.trim() !== '') {
+                    textarea.value = sortedText;
+                    ed.content = sortedText;
+                    ed.parentTitle = getParentTitle(sortedText);
+                    changed = true;
+                }
+            });
+
+            if (changed) {
+                sortEditorsByTitle();
+                renderEditors();
+                setStatus("Sorted hierarchy and panels successfully.", "#2e7d32");
+            }
+        }
+
+        function handleSearchInput() {
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+            if (query === '') {
+                hideTopMatch();
+                return;
+            }
+
+            const matches = allItemsFlat.filter(item => item.text.toLowerCase().includes(query));
+            showTopMatch(`Hierarchy Search Results (${matches.length})`, matches);
+        }
+
+        function showTopMatch(titleText, matches) {
+            document.getElementById('topMatchTitle').textContent = titleText;
+            const listContainer = document.getElementById('topMatchList');
+            listContainer.innerHTML = '';
+
+            matches.forEach(match => {
+                const indentPx = match.depth * 15;
+                const div = document.createElement('div');
+                
+                if (match.depth === 0) {
+                    div.className = 'match-list-item parent-level';
+                } else {
+                    div.className = 'match-list-item';
+                }
+
+                div.style.paddingLeft = `${10 + indentPx}px`;
+                div.innerHTML = `
+                    <span><strong>[${match.parentTitle}] - ${match.text}</strong> <span style="color:#888; font-size:11px;">(Line ${match.lineIndex + 1})</span></span>
+                    <span style="font-size:11px; color:#c62828; font-weight:bold;">Jump ↗</span>
+                `;
+                div.onclick = () => {
+                    maximizePanel(match.editorId);
+                    setTimeout(() => jumpToEditorPosition(match.editorId, match.lineIndex), 50);
+                };
+                listContainer.appendChild(div);
+            });
+
+            document.getElementById('topMatchContainer').style.display = 'block';
+        }
+
+        function hideTopMatch() {
+            document.getElementById('topMatchContainer').style.display = 'none';
+        }
+
+        function jumpToEditorPosition(editorId, lineIndex) {
+            const textarea = document.getElementById(`textarea_${editorId}`);
+            if (!textarea) return;
+
+            textarea.focus();
+            const lines = textarea.value.split('\n');
+
+            let charIndex = 0;
+            for (let i = 0; i < lineIndex; i++) {
+                charIndex += (lines[i] !== undefined ? lines[i].length : 0) + 1;
+            }
+
+            const targetLineLength = lines[lineIndex] ? lines[lineIndex].length : 0;
+            textarea.setSelectionRange(charIndex, charIndex + targetLineLength);
+            textarea.scrollTop = lineIndex * 20;
+        }
+    </script>
+</body>
+</html>
